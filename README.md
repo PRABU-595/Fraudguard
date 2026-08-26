@@ -172,3 +172,33 @@ To push changes to GitHub:
 git_push
 ```
 *(Target Remote: `https://github.com/AbhiSharma200/Fraudguard.git`)*
+
+---
+
+## 8. What Has Been Completed So Far (Modules 2, 4, 5, 6 Hand-off)
+
+The backend decision orchestration pipeline has been successfully built and tested locally.
+
+### Completed Work & Assets
+- **Module 4 (ML Fraud Model):** src/train_model.py trained an XGBoost classifier with 100%% Recall and 80%% Precision. We also added src/score.py ready for Azure ML Real-Time Endpoint deployment.
+- **Module 2 (Rule Engine):** src/rule_engine.py successfully evaluates Velocity, Channel Risk, and Amount Anomalies.
+- **Module 6 (Cosmos Audit Log):** src/db_client.py uses the zure-cosmos SDK to log decisions (falling back to local JSON if Azure is not configured).
+- **Module 5 (Decision Router):** src/router_function.py and src/function_app.py orchestrate the ML model and rules engine, packaged as a ready-to-deploy Azure Function.
+- **Integration Test:** We updated src/replay_stream.py to route local telemetry through the fully integrated router pipeline.
+
+## 9. Developer Guide: How to Continue with the Next Modules
+
+### For Developer 3 - Implementing Module 3 (Cloud Infrastructure Provisioning)
+**Status:** Code is ready, provisioning required.
+1. Install **Azure CLI** (z) and **Terraform**.
+2. Run z login to authenticate.
+3. Navigate to 	erraform/ and run 	erraform init and 	erraform apply.
+4. Once deployed, populate the .env or system environment variables with:
+   - COSMOS_DB_ENDPOINT
+   - COSMOS_DB_KEY
+5. Deploy src/function_app.py to the provisioned Azure Function App.
+
+### For Developer 7 - Implementing Module 7 (Web Dashboard)
+**Status:** Baseline running locally on port 8081.
+1. The dashboard (src/stream_monitor.py) currently reads live_telemetry.json.
+2. Connect the UI dashboard to pull directly from Cosmos DB or receive SignalR broadcasts from the Azure Function once Module 3 is live in the cloud.
