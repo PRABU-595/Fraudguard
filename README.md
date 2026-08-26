@@ -1,4 +1,4 @@
-# FraudGuard — Real-Time Fraud Detection & Risk Scoring System
+﻿# FraudGuard — Real-Time Fraud Detection & Risk Scoring System
 
 > **Project Title:** FraudGuard — Real-Time Fraud Detection & Risk Scoring System for Digital Payments  
 > **Repository:** [https://github.com/AbhiSharma200/Fraudguard.git](https://github.com/AbhiSharma200/Fraudguard.git)  
@@ -36,13 +36,13 @@ The project is structured into **8 Technical Modules** designed for a 4-develope
 | Module | Title | Primary Tech | Assigned Role | Status |
 |---|---|---|---|---|
 | **Module 1** | **Data Pipeline & Real-Time Stream Simulation** | Python, pandas, Event Hubs | **Developer 1 (Completed)** | **100% COMPLETE** |
-| **Module 2** | **Rule-Based Fraud Detection Engine** | Stream Analytics, SQL, Python | Developer 2 | *Next Step* |
+| **Module 2** | **Rule-Based Fraud Detection Engine** | Stream Analytics, SQL, Python | **Developer 2 (Completed)** | **100% COMPLETE (Local)** |
 | **Module 3** | **Cloud Infrastructure Setup & Provisioning** | Terraform IaC, Azure CLI | Developer 3 | Ready for `terraform apply` |
-| **Module 4** | **ML-Based Fraud Risk Scoring Model** | Python, XGBoost, Azure ML | Developer 4 | Ready for Training |
-| **Module 5** | **Decision Orchestration & Routing Logic** | Azure Functions, Python | Developer 3 / 2 | Pending Modules 2 & 4 |
-| **Module 6** | **Audit Log & Data Persistence** | Azure Cosmos DB (SQL API) | Developer 4 | Schema Ready |
-| **Module 7** | **Analyst Dashboard & Visualization** | HTML5, CSS3, JavaScript, Python | Developer 2 / 1 | Baseline UI Ready |
-| **Module 8** | **Integration, Testing & Review Demo** | End-to-End Pipeline | Shared (All 4) | Pending Integration |
+| **Module 4** | **ML-Based Fraud Risk Scoring Model** | Python, XGBoost, Azure ML | **Developer 4 (Completed)** | **100% COMPLETE** |
+| **Module 5** | **Decision Orchestration & Routing Logic** | Azure Functions, Python | **Developer 3 / 2 (Completed)** | **100% COMPLETE (Local)** |
+| **Module 6** | **Audit Log & Data Persistence** | Azure Cosmos DB (SQL API) | **Developer 4 (Completed)** | **100% COMPLETE** |
+| **Module 7** | **Analyst Dashboard & Visualization** | HTML5, CSS3, JavaScript, Python | Developer 2 / 1 | Local UI Ready |
+| **Module 8** | **Integration, Testing & Review Demo** | End-to-End Pipeline | **Shared (Completed)** | **100% COMPLETE (Local E2E)** |
 
 ---
 
@@ -202,3 +202,4 @@ The backend decision orchestration pipeline has been successfully built and test
 **Status:** Baseline running locally on port 8081.
 1. The dashboard (src/stream_monitor.py) currently reads live_telemetry.json.
 2. Connect the UI dashboard to pull directly from Cosmos DB or receive SignalR broadcasts from the Azure Function once Module 3 is live in the cloud.
+
