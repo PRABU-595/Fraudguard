@@ -223,7 +223,7 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
-def run_server(port=8080):
+def run_server(port=8081):
     server_address = ('', port)
     httpd = HTTPServer(server_address, TelemetryHTTPRequestHandler)
     print(f"\n==========================================================================")
