@@ -14,13 +14,42 @@
     "destination_account": { "type": "string" },
     "timestamp": { "type": "string", "format": "date-time" },
     "amount": { "type": "number", "minimum": 0.0 },
+    "currency": { "type": "string", "default": "USD" },
     "txn_type": { "type": "string" },
     "merchant": { "type": "string" },
     "merchant_category": { "type": "string" },
     "risk_score": { "type": "integer", "minimum": 0, "maximum": 100 },
     "decision": { "type": "string", "enum": ["ALLOW", "REVIEW_QUEUE", "BLOCK"] },
-    "status": { "type": "string", "enum": ["APPROVED", "PENDING_REVIEW", "QUARANTINED", "RELEASED", "CONFIRMED_FRAUD"] },
+    "status": { "type": "string", "enum": ["APPROVED", "PENDING_REVIEW", "QUARANTINED", "RELEASED", "CONFIRMED_FRAUD", "ESCALATED"] },
     "flags": { "type": "array", "items": { "type": "string" } },
+    "score_breakdown": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule": { "type": "string" },
+          "points": { "type": "integer" },
+          "category": { "type": "string" }
+        }
+      }
+    },
+    "attributes": {
+      "type": "object",
+      "properties": {
+        "device_fingerprint": { "type": "string" },
+        "user_agent": { "type": "string" },
+        "browser": { "type": "string" },
+        "os": { "type": "string" },
+        "screen_resolution": { "type": "string" },
+        "session_id": { "type": "string" },
+        "payment_channel": { "type": "string" },
+        "merchant_category_code": { "type": "string" },
+        "currency": { "type": "string" },
+        "is_new_device": { "type": "boolean" },
+        "is_new_beneficiary": { "type": "boolean" },
+        "timezone_mismatch": { "type": "boolean" }
+      }
+    },
     "origin": {
       "type": "object",
       "properties": {
@@ -29,10 +58,13 @@
         "city": { "type": "string" },
         "region": { "type": "string" },
         "isp": { "type": "string" },
+        "asn": { "type": "string" },
         "connection_type": { "type": "string", "enum": ["mobile", "broadband", "vpn", "proxy", "tor"] },
         "is_vpn": { "type": "boolean" },
         "is_proxy": { "type": "boolean" },
         "is_tor": { "type": "boolean" },
+        "is_datacenter": { "type": "boolean" },
+        "threat_level": { "type": "string" },
         "coordinates": {
           "type": "object",
           "properties": {
@@ -55,7 +87,10 @@
         "chain_risk_score": { "type": "number" },
         "velocity_1hr": { "type": "integer" },
         "velocity_24hr": { "type": "integer" },
-        "amount_delta_pct": { "type": "number" }
+        "velocity_7d": { "type": "integer" },
+        "amount_delta_pct": { "type": "number" },
+        "amount_zscore": { "type": "number" },
+        "entity_graph": { "type": "object" }
       }
     },
     "time_analysis": {
@@ -67,7 +102,10 @@
         "is_weekend": { "type": "boolean" },
         "account_typical_hours": { "type": "array", "items": { "type": "integer" } },
         "hour_anomaly": { "type": "boolean" },
-        "time_since_last_txn_mins": { "type": ["number", "null"] }
+        "time_since_last_txn_mins": { "type": ["number", "null"] },
+        "burst_count_5m": { "type": "integer" },
+        "hourly_distribution_24h": { "type": "array", "items": { "type": "integer" } },
+        "velocity_sparkline": { "type": "array", "items": { "type": "number" } }
       }
     },
     "location_check": {
@@ -80,18 +118,27 @@
         "distance_km": { "type": "number" },
         "is_international": { "type": "boolean" },
         "is_impossible_travel": { "type": "boolean" },
-        "travel_speed_kmh": { "type": "number" }
+        "travel_speed_kmh": { "type": "number" },
+        "latest_location": { "type": "object" }
       }
     },
     "pii_enrichment": {
       "type": "object",
       "properties": {
-        "data_source": { "type": "string", "const": "MOCK_DEMO_DATA" },
+        "data_source": { "type": "string" },
         "enrichment_status": { "type": "string", "enum": ["FOUND", "NOT_FOUND"] },
+        "is_simulated": { "type": "boolean" },
+        "confidence": { "type": "number" },
+        "source": { "type": "string" },
+        "fetched_at": { "type": "string" },
         "account_holder_name": { "type": "string" },
+        "account_holder_masked": { "type": "string" },
         "account_age_days": { "type": ["integer", "null"] },
         "linked_phone_verified": { "type": ["boolean", "null"] },
+        "email_verified": { "type": ["boolean", "null"] },
+        "sim_swap_last_7d": { "type": "boolean" },
         "social_profile_risk_score": { "type": "number" },
+        "social_reputation": { "type": "string" },
         "device_fingerprint": { "type": "string" },
         "last_known_location": { "type": ["object", "null"] },
         "location_matches_transaction": { "type": "boolean" }

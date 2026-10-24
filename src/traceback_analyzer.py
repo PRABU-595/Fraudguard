@@ -1,17 +1,21 @@
 """
 Feature 2: Transaction Traceback (Full Audit Chain)
 Links every transaction to its complete history chain for that account,
-computes 1h/24h velocity windows without double-counting, rolling 5-txn
-chain_risk_score, and amount_delta_pct.
+computes 1h/24h/7d velocity windows without double-counting, rolling 5-txn
+chain_risk_score, amount_delta_pct, amount z-score vs baseline, and generates
+an entity relationship graph (Account <-> Device <-> IP <-> Merchant).
 """
 
+import math
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 VELOCITY_1HR_SPIKE_THRESHOLD = 5
 VELOCITY_SPIKE_POINTS = 25
 AMOUNT_SPIKE_PCT_THRESHOLD = 300.0
 AMOUNT_SPIKE_POINTS = 20
+AMOUNT_ZSCORE_THRESHOLD = 3.0
+AMOUNT_ZSCORE_POINTS = 15
 CHAIN_SCORE_WINDOW_SIZE = 5
 
 
@@ -45,10 +49,40 @@ def _extract_record_amount(record: Dict[str, Any]) -> float:
     return float(raw) if raw is not None else 0.0
 
 
+def _extract_record_ip(record: Dict[str, Any]) -> str:
+    orig = record.get("origin") or (record.get("original_payload") or {}).get("origin") or {}
+    return str(orig.get("ip_address") or record.get("ip_address") or "192.0.2.1")
+
+
+def _extract_record_device(record: Dict[str, Any]) -> str:
+    pii = record.get("pii_enrichment") or (record.get("original_payload") or {}).get("pii_enrichment") or {}
+    return str(pii.get("device_fingerprint") or record.get("device_fingerprint") or "fp_default")
+
+
+def _extract_record_merchant(record: Dict[str, Any]) -> str:
+    return str(
+        record.get("merchant")
+        or record.get("destination_account")
+        or (record.get("original_payload") or {}).get("merchant")
+        or (record.get("original_payload") or {}).get("destination_account")
+        or "General Merchant"
+    )
+
+
+def compute_z_score(val: float, values: List[float]) -> float:
+    if len(values) < 3:
+        return 0.0
+    mean = sum(values) / len(values)
+    variance = sum((x - mean) ** 2 for x in values) / len(values)
+    std_dev = math.sqrt(variance)
+    if std_dev < 1e-4:
+        return 0.0
+    return round((val - mean) / std_dev, 2)
+
+
 class TracebackAnalyzer:
     def __init__(self, db_client: Optional[Any] = None) -> None:
         self.db_client = db_client
-        # In-memory fallback index if db_client is not provided
         self._local_history: Dict[str, List[Dict[str, Any]]] = {}
 
     def _get_account_history(self, account_id: Optional[str], current_tx_id: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -91,6 +125,59 @@ class TracebackAnalyzer:
             return
         self._local_history[account_id].append(tx_record)
 
+    def generate_entity_graph(
+        self,
+        account_id: str,
+        history: List[Dict[str, Any]],
+        current_tx: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Generates a node-link relationship graph (Account <-> Device <-> IP <-> Merchant).
+        """
+        nodes: List[Dict[str, Any]] = []
+        links: List[Dict[str, Any]] = []
+        node_ids: Set[str] = set()
+
+        def add_node(nid: str, label: str, ntype: str, risk: str = "LOW") -> None:
+            if nid not in node_ids:
+                node_ids.add(nid)
+                nodes.append({"id": nid, "label": label, "type": ntype, "risk": risk})
+
+        def add_link(source: str, target: str, rel: str) -> None:
+            links.append({"source": source, "target": target, "relation": rel})
+
+        # Central Account node
+        add_node(f"acc:{account_id}", account_id, "account", risk="LOW")
+
+        # Current transaction entities
+        curr_dev = _extract_record_device(current_tx)
+        curr_ip = _extract_record_ip(current_tx)
+        curr_merch = _extract_record_merchant(current_tx)
+
+        add_node(f"dev:{curr_dev}", curr_dev, "device", risk="MEDIUM" if "emu" in curr_dev else "LOW")
+        add_node(f"ip:{curr_ip}", curr_ip, "ip", risk="HIGH" if "185.220" in curr_ip else "LOW")
+        add_node(f"merch:{curr_merch}", curr_merch, "merchant", risk="LOW")
+
+        add_link(f"acc:{account_id}", f"dev:{curr_dev}", "used_device")
+        add_link(f"acc:{account_id}", f"ip:{curr_ip}", "originated_from")
+        add_link(f"acc:{account_id}", f"merch:{curr_merch}", "transacted_with")
+
+        # Connect up to 10 historical records
+        for r in history[-10:]:
+            d = _extract_record_device(r)
+            ip = _extract_record_ip(r)
+            m = _extract_record_merchant(r)
+
+            add_node(f"dev:{d}", d, "device", risk="LOW")
+            add_node(f"ip:{ip}", ip, "ip", risk="LOW")
+            add_node(f"merch:{m}", m, "merchant", risk="LOW")
+
+            add_link(f"acc:{account_id}", f"dev:{d}", "used_device")
+            add_link(f"acc:{account_id}", f"ip:{ip}", "originated_from")
+            add_link(f"acc:{account_id}", f"merch:{m}", "transacted_with")
+
+        return {"nodes": nodes, "links": links}
+
     def evaluate(
         self,
         tx: Dict[str, Any],
@@ -98,16 +185,15 @@ class TracebackAnalyzer:
         prior_records: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
-        Computes the `traceback` block and evaluates VELOCITY_SPIKE and AMOUNT_SPIKE flags.
+        Computes the `traceback` block and evaluates VELOCITY_SPIKE, AMOUNT_SPIKE, and AMOUNT_ZSCORE_ANOMALY flags.
         """
         tx_id = tx.get("transaction_id")
-        account_id = tx.get("account_id") or tx.get("source_account") or tx.get("user_id")
+        account_id = tx.get("account_id") or tx.get("source_account") or tx.get("user_id") or "acc_unknown"
         raw_amt = tx.get("amount", 0.0)
         amount = float(raw_amt) if raw_amt is not None else 0.0
         tx_time = parse_iso_timestamp(tx.get("timestamp"))
 
         if prior_records is not None:
-            # Exclude current_tx_id if accidentally present in prior_records
             history = [
                 r for r in prior_records
                 if not (tx_id and r.get("transaction_id") == tx_id)
@@ -119,9 +205,10 @@ class TracebackAnalyzer:
         prior_count = len(history)
         account_tx_count = prior_count + 1
 
-        # Velocity windows: count prior transactions within window + 1 (current txn, counted once)
+        # Velocity windows: 1h, 24h, 7d
         one_hr_ago = tx_time - timedelta(hours=1)
         twenty_four_hr_ago = tx_time - timedelta(hours=24)
+        seven_days_ago = tx_time - timedelta(days=7)
 
         prior_1hr = sum(
             1 for r in history
@@ -131,15 +218,22 @@ class TracebackAnalyzer:
             1 for r in history
             if twenty_four_hr_ago <= parse_iso_timestamp(_extract_record_ts(r)) <= tx_time
         )
+        prior_7d = sum(
+            1 for r in history
+            if seven_days_ago <= parse_iso_timestamp(_extract_record_ts(r)) <= tx_time
+        )
 
         velocity_1hr = prior_1hr + 1
         velocity_24hr = prior_24hr + 1
+        velocity_7d = prior_7d + 1
 
-        # Filter out future-skewed records when selecting chronological predecessor
         prior_chronological = [
             r for r in history
             if parse_iso_timestamp(_extract_record_ts(r)) <= tx_time
         ]
+
+        historical_amounts = [_extract_record_amount(r) for r in history]
+        amount_zscore = compute_z_score(amount, historical_amounts)
 
         if prior_count == 0:
             prev_tx_id = None
@@ -176,7 +270,7 @@ class TracebackAnalyzer:
 
             # Compute % change vs previous amount and vs historical average
             delta_prev = ((amount - prev_amount) / prev_amount * 100.0) if prev_amount > 0 else 0.0
-            avg_amount = sum(_extract_record_amount(r) for r in history) / prior_count
+            avg_amount = sum(historical_amounts) / prior_count
             delta_avg = ((amount - avg_amount) / avg_amount * 100.0) if avg_amount > 0 else 0.0
             amount_delta_pct = round(max(delta_prev, delta_avg), 2)
 
@@ -202,6 +296,12 @@ class TracebackAnalyzer:
             flags.append("AMOUNT_SPIKE")
             risk_points += AMOUNT_SPIKE_POINTS
 
+        if amount_zscore > AMOUNT_ZSCORE_THRESHOLD:
+            flags.append("AMOUNT_ZSCORE_ANOMALY")
+            risk_points += AMOUNT_ZSCORE_POINTS
+
+        entity_graph = self.generate_entity_graph(str(account_id), history, tx)
+
         traceback_block = {
             "account_transaction_count": account_tx_count,
             "previous_transaction_id": prev_tx_id,
@@ -212,7 +312,10 @@ class TracebackAnalyzer:
             "chain_risk_score": chain_risk_score,
             "velocity_1hr": velocity_1hr,
             "velocity_24hr": velocity_24hr,
-            "amount_delta_pct": amount_delta_pct
+            "velocity_7d": velocity_7d,
+            "amount_delta_pct": amount_delta_pct,
+            "amount_zscore": amount_zscore,
+            "entity_graph": entity_graph
         }
 
         return {
@@ -220,5 +323,6 @@ class TracebackAnalyzer:
             "flags": flags,
             "risk_points": risk_points,
             "previous_record": last_tx,
-            "history_last_5": history[-CHAIN_SCORE_WINDOW_SIZE:]
+            "history_last_5": history[-CHAIN_SCORE_WINDOW_SIZE:],
+            "history_full": history
         }
