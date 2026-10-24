@@ -146,15 +146,12 @@ class SimulatorEngine:
 
         else:
             # Clean Domestic
-            cities = [
-                ("New York", "US", "192.0.2.1"),
-                ("San Francisco", "US", "192.0.2.2"),
-                ("Chicago", "US", "192.0.2.3")
-            ]
-            city, country, ip = random.choice(cities)
+            city = "New York"
+            country = "US"
+            ip = "192.0.2.1"
             return {
                 "transaction_id": tx_id,
-                "source_account": f"acc_clean_{random.randint(100, 999)}",
+                "source_account": f"acc_norm_{int(now_utc.timestamp() * 1000)}_{self._seq}",
                 "destination_account": f"acc_retail_{random.randint(100, 999)}",
                 "amount": round(random.uniform(15.0, 85.0), 2),
                 "currency": "USD",

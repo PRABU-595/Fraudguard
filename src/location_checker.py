@@ -101,7 +101,11 @@ class LocationChecker:
         now_ts = time.time()
 
         # Priority 1: Carrier / Cell-Tower
-        cell_loc = (pii_profile or {}).get("last_known_location")
+        cell_loc = (
+            (pii_profile or {}).get("last_known_location")
+            or tx.get("cell_tower_location")
+            or (tx.get("pii_enrichment") or {}).get("last_known_location")
+        )
         if cell_loc and isinstance(cell_loc, dict) and "lat" in cell_loc and "lon" in cell_loc:
             ts_str = cell_loc.get("timestamp")
             freshness = 120.0
@@ -200,6 +204,7 @@ class LocationChecker:
         travel_speed_kmh = 0.0
         is_impossible_travel = False
         travel_dist_km = 0.0
+        prev_coords_dict: Optional[Dict[str, float]] = None
 
         prev_loc_source = previous_record or tx.get("previous_transaction")
         if prev_loc_source and time_since_last_txn_mins is not None and time_since_last_txn_mins >= 0:
@@ -218,6 +223,7 @@ class LocationChecker:
             prev_coords = prev_loc_source.get("coordinates") or prev_orig.get("coordinates")
             if prev_city or prev_coords:
                 prev_lat, prev_lon = resolve_coordinates(prev_city, prev_coords)
+                prev_coords_dict = {"lat": prev_lat, "lon": prev_lon}
                 travel_dist_km = haversine_km(prev_lat, prev_lon, tx_lat, tx_lon)
                 if travel_dist_km > 0:
                     hours = float(time_since_last_txn_mins) / 60.0
@@ -249,6 +255,7 @@ class LocationChecker:
             "transaction_city": tx_city,
             "transaction_country": tx_country,
             "transaction_coordinates": {"lat": tx_lat, "lon": tx_lon},
+            "previous_transaction_coordinates": prev_coords_dict,
             "distance_km": distance_km,
             "is_international": is_international,
             "is_impossible_travel": is_impossible_travel,

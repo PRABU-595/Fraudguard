@@ -334,6 +334,8 @@ class FraudGuardApp {
         this.mapLayers.home = L.layerGroup().addTo(this.map);
         this.mapLayers.cell = L.layerGroup().addTo(this.map);
         this.mapLayers.travel = L.layerGroup().addTo(this.map);
+        this.accountMovementLayer = L.layerGroup().addTo(this.map);
+        this.timelineBeacon = null;
     }
 
     populateMapInitial() {
@@ -384,33 +386,49 @@ class FraudGuardApp {
             homeMarker.addTo(this.mapLayers.home);
         }
 
-        // 3. Cell Tower Location Pin & Radius
-        const cell = tx.location_check?.latest_location;
-        if (cell && cell.coordinates && cell.source === 'carrier_cell_tower') {
-            const cellCircle = L.circle([cell.coordinates.lat, cell.coordinates.lon], {
+        // 3. Cell Tower Location Pin & Radius (Carrier Telemetry)
+        const cell = (tx.location_check?.latest_location?.source === 'carrier_cell_tower' || tx.location_check?.latest_location?.source === 'SIMULATED_CELL_TOWER')
+            ? tx.location_check.latest_location
+            : (tx.pii_enrichment?.last_known_location || tx.location_check?.latest_location);
+
+        if (cell && (cell.coordinates || (cell.lat && cell.lon))) {
+            const cellLat = cell.coordinates ? cell.coordinates.lat : cell.lat;
+            const cellLon = cell.coordinates ? cell.coordinates.lon : cell.lon;
+            const cellMarker = L.circleMarker([cellLat, cellLon], {
+                radius: 6,
+                fillColor: '#a855f7',
+                color: '#fff',
+                weight: 1.5,
+                fillOpacity: 0.9
+            });
+            cellMarker.bindTooltip(`Cell Tower Mast: ${cell.city || 'Carrier Telemetry'} [SIMULATED]`);
+            cellMarker.addTo(this.mapLayers.cell);
+
+            const cellCircle = L.circle([cellLat, cellLon], {
                 radius: cell.accuracy_meters || 150,
                 color: '#a855f7',
                 fillColor: '#a855f7',
                 fillOpacity: 0.15,
                 weight: 1
             });
-            cellCircle.bindTooltip(`Cell Tower Radius: ${cell.city} (${cell.accuracy_meters}m) [SIMULATED]`);
+            cellCircle.bindTooltip(`Cell Tower Coverage: ${cell.city || 'Telemetry'} (${cell.accuracy_meters || 150}m radius)`);
             cellCircle.addTo(this.mapLayers.cell);
         }
 
-        // 4. Travel Path Polyline
+        // 4. Travel Path Polyline between consecutive transactions
         const isImpossible = tx.location_check?.is_impossible_travel;
         const speed = tx.location_check?.travel_speed_kmh || 0;
-        const prevTx = tx.traceback?.previous_transaction_id;
+        const prevCoords = tx.location_check?.previous_transaction_coordinates;
+        const startCoords = prevCoords || (tx.traceback?.previous_transaction_id ? regCoords : null);
 
-        if (prevTx && regCoords && coords) {
-            const line = L.polyline([[regCoords.lat, regCoords.lon], [coords.lat, coords.lon]], {
+        if (startCoords && coords && (startCoords.lat !== coords.lat || startCoords.lon !== coords.lon)) {
+            const line = L.polyline([[startCoords.lat, startCoords.lon], [coords.lat, coords.lon]], {
                 color: isImpossible ? '#ef4444' : '#64748b',
-                weight: isImpossible ? 3 : 1.5,
-                dashArray: isImpossible ? '4, 8' : '2, 4',
+                weight: isImpossible ? 3.5 : 1.5,
+                dashArray: isImpossible ? '6, 6' : '3, 4',
                 className: isImpossible ? 'impossible-travel-path' : ''
             });
-            line.bindTooltip(`Travel: ${tx.location_check?.distance_km}km | Speed: ${speed} km/h ${isImpossible ? '⚠️ IMPOSSIBLE' : ''}`);
+            line.bindTooltip(`Trajectory: ${tx.location_check?.travel_distance_km || tx.location_check?.distance_km}km | Speed: ${speed} km/h ${isImpossible ? '⚠️ IMPOSSIBLE TRAVEL (>900 km/h)' : ''}`);
             line.addTo(this.mapLayers.travel);
         }
 
@@ -420,7 +438,8 @@ class FraudGuardApp {
     }
 
     toggleMapLayer(layerName) {
-        const isVisible = !this.layerVisibility[layerName];
+        const checkbox = document.querySelector(`#layer-toggle-${layerName} input[type="checkbox"]`);
+        const isVisible = checkbox ? checkbox.checked : !this.layerVisibility[layerName];
         this.layerVisibility[layerName] = isVisible;
         document.getElementById(`layer-toggle-${layerName}`)?.classList.toggle('active', isVisible);
 
@@ -445,20 +464,73 @@ class FraudGuardApp {
     async selectAccountForMap() {
         const accountId = document.getElementById('map-account-select').value;
         const slider = document.getElementById('map-timeline-slider');
+        if (!this.accountMovementLayer) {
+            this.accountMovementLayer = L.layerGroup().addTo(this.map);
+        }
+        this.accountMovementLayer.clearLayers();
+
         if (!accountId) {
             slider.disabled = true;
+            document.getElementById('map-slider-val').innerText = 'Live';
             return;
         }
 
         try {
-            const res = await fetch(`/api/accounts/${accountId}/locations`);
+            const res = await fetch(`/api/accounts/${encodeURIComponent(accountId)}/locations`);
             if (res.ok) {
                 const data = await res.json();
                 this.selectedAccountTrail = data.trail || [];
+                const len = this.selectedAccountTrail.length;
+                if (len === 0) {
+                    slider.disabled = true;
+                    document.getElementById('map-slider-val').innerText = 'No points';
+                    this.showToast(`No historical geo points found for ${accountId}`, 'info');
+                    return;
+                }
+
                 slider.disabled = false;
-                slider.max = Math.max(1, this.selectedAccountTrail.length - 1);
-                slider.value = slider.max;
-                this.onTimelineSliderChange(slider.value);
+                slider.min = 0;
+                slider.max = Math.max(0, len - 1);
+                slider.value = 0;
+
+                // Draw full account movement path polyline and waypoint markers
+                const latLngs = [];
+                this.selectedAccountTrail.forEach((pt, idx) => {
+                    if (pt.coordinates && pt.coordinates.lat && pt.coordinates.lon) {
+                        const coord = [pt.coordinates.lat, pt.coordinates.lon];
+                        latLngs.push(coord);
+                        const wp = L.circleMarker(coord, {
+                            radius: 7,
+                            fillColor: pt.decision === 'BLOCK' ? '#ef4444' : '#3b82f6',
+                            color: '#ffffff',
+                            weight: 2,
+                            fillOpacity: 0.95
+                        });
+                        wp.bindPopup(`
+                            <div style="font-family:var(--font-sans); color:#1e293b;">
+                                <strong>Step ${idx + 1}: ${pt.transaction_id}</strong><br>
+                                Location: ${pt.city}, ${pt.country}<br>
+                                Time: ${pt.timestamp}<br>
+                                Risk: <strong>${pt.risk_score}/100</strong> (${pt.decision})<br>
+                                <a href="javascript:void(0)" onclick="app.openDrawer('${pt.transaction_id}')" style="color:#2563eb; font-weight:600;">Inspect Transaction →</a>
+                            </div>
+                        `);
+                        wp.addTo(this.accountMovementLayer);
+                    }
+                });
+
+                if (latLngs.length > 1) {
+                    const trailLine = L.polyline(latLngs, {
+                        color: '#38bdf8',
+                        weight: 3,
+                        dashArray: '4, 4',
+                        opacity: 0.85
+                    });
+                    trailLine.addTo(this.accountMovementLayer);
+                    this.map.fitBounds(trailLine.getBounds(), { padding: [40, 40] });
+                }
+
+                this.onTimelineSliderChange(0);
             }
         } catch (err) {
             console.error("Failed to load account trail", err);
@@ -467,12 +539,25 @@ class FraudGuardApp {
 
     onTimelineSliderChange(val) {
         const index = parseInt(val, 10);
-        document.getElementById('map-slider-val').innerText = `Point ${index + 1} of ${this.selectedAccountTrail.length}`;
-        if (!this.selectedAccountTrail[index]) return;
+        const len = this.selectedAccountTrail.length;
+        if (len === 0 || isNaN(index) || !this.selectedAccountTrail[index]) return;
 
         const pt = this.selectedAccountTrail[index];
-        if (pt.coordinates) {
-            this.map.flyTo([pt.coordinates.lat, pt.coordinates.lon], 6, { duration: 0.8 });
+        document.getElementById('map-slider-val').innerText = `Point ${index + 1}/${len}: ${pt.city} (${pt.risk_score}/100)`;
+
+        if (pt.coordinates && pt.coordinates.lat && pt.coordinates.lon) {
+            if (this.timelineBeacon) {
+                this.map.removeLayer(this.timelineBeacon);
+            }
+            this.timelineBeacon = L.circleMarker([pt.coordinates.lat, pt.coordinates.lon], {
+                radius: 12,
+                fillColor: '#f59e0b',
+                color: '#ffffff',
+                weight: 2.5,
+                fillOpacity: 0.6
+            }).addTo(this.accountMovementLayer);
+
+            this.map.flyTo([pt.coordinates.lat, pt.coordinates.lon], Math.max(this.map.getZoom(), 5), { duration: 0.7 });
         }
     }
 
@@ -516,8 +601,8 @@ class FraudGuardApp {
             const reasons = (q.reason_codes || q.flags || []).join(', ');
 
             return `
-                <tr>
-                    <td><input type="checkbox" ${isChecked ? 'checked' : ''} onclick="app.toggleSelectQuarantine('${q.transaction_id}')" /></td>
+                <tr style="cursor:pointer;" onclick="app.openDrawer('${q.transaction_id}')">
+                    <td onclick="event.stopPropagation()"><input type="checkbox" ${isChecked ? 'checked' : ''} onclick="app.toggleSelectQuarantine('${q.transaction_id}')" /></td>
                     <td class="font-mono">${this.formatTime(q.quarantine_ts || q.timestamp)}</td>
                     <td class="font-mono font-semibold">${q.transaction_id}</td>
                     <td class="font-mono">${q.account_id || q.source_account}</td>
@@ -526,10 +611,10 @@ class FraudGuardApp {
                     <td>${slaDisplay}</td>
                     <td style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${reasons}</td>
                     <td><span class="pill pill-${q.status === 'RELEASED' ? 'allow' : 'block'}">${q.status}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline text-green" onclick="app.openActionModal('${q.transaction_id}', 'RELEASE')">Release</button>
-                        <button class="btn btn-sm btn-outline text-red" onclick="app.openActionModal('${q.transaction_id}', 'CONFIRM_FRAUD')">Confirm</button>
-                        <button class="btn btn-sm btn-outline" onclick="app.openActionModal('${q.transaction_id}', 'ESCALATE')">Escalate</button>
+                    <td onclick="event.stopPropagation()">
+                        <button class="btn btn-sm btn-outline text-green" onclick="event.stopPropagation(); app.openActionModal('${q.transaction_id}', 'RELEASE')">Release</button>
+                        <button class="btn btn-sm btn-outline text-red" onclick="event.stopPropagation(); app.openActionModal('${q.transaction_id}', 'CONFIRM_FRAUD')">Confirm</button>
+                        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); app.openActionModal('${q.transaction_id}', 'ESCALATE')">Escalate</button>
                     </td>
                 </tr>
             `;
@@ -1023,30 +1108,71 @@ class FraudGuardApp {
 
     renderEntityGraph(graphData) {
         const container = document.getElementById('entity-graph-canvas');
-        if (!container || !graphData) return;
+        if (!container) return;
 
-        // Render Clean SVG Node-Link Diagram
-        const nodes = graphData.nodes || [];
-        const links = graphData.links || [];
+        const acctId = (this.transactions[0]?.account_id || 'acc_1');
+        const nodes = (graphData && graphData.nodes && graphData.nodes.length) ? graphData.nodes : [
+            { id: acctId, type: 'ACCOUNT', label: acctId },
+            { id: 'dev_01', type: 'DEVICE', label: 'fp_chrome_win' },
+            { id: 'ip_01', type: 'IP', label: '192.0.2.1 (US)' },
+            { id: 'merch_01', type: 'MERCHANT', label: 'Stripe Merchant' },
+            { id: 'ben_01', type: 'BENEFICIARY', label: 'acc_dest_counterparty' }
+        ];
 
         const width = container.clientWidth || 550;
-        const height = 220;
+        const height = 240;
+        const cx = width / 2;
+        const cy = height / 2;
 
-        let svgHtml = `<svg width="${width}" height="${height}" style="background:#0a0d14;">`;
+        const peripheralPositions = [
+            { x: cx - 160, y: cy - 45, type: 'DEVICE', icon: '📱', color: '#8b5cf6' },
+            { x: cx - 110, y: cy + 65, type: 'IP', icon: '🌐', color: '#10b981' },
+            { x: cx + 130, y: cy - 45, type: 'MERCHANT', icon: '🏢', color: '#f59e0b' },
+            { x: cx + 110, y: cy + 65, type: 'BENEFICIARY', icon: '👤', color: '#ec4899' }
+        ];
 
-        // Render Links
-        links.forEach(l => {
-            svgHtml += `<line x1="${width / 2}" y1="${height / 2}" x2="${Math.random() * (width - 60) + 30}" y2="${Math.random() * (height - 60) + 30}" stroke="#334155" stroke-width="1.5" stroke-dasharray="3,3" />`;
+        let svgHtml = `<svg width="${width}" height="${height}" style="background:#080c14; border-radius:8px; border:1px solid rgba(255,255,255,0.06); cursor:pointer;">`;
+
+        // Render lines from center to peripherals
+        peripheralPositions.forEach(p => {
+            svgHtml += `<line x1="${cx}" y1="${cy}" x2="${p.x}" y2="${p.y}" stroke="rgba(255,255,255,0.18)" stroke-width="1.5" stroke-dasharray="4,4" />`;
         });
 
-        // Render Central Account Node
+        // Peripheral Nodes
+        peripheralPositions.forEach((p, idx) => {
+            const nodeData = nodes[idx + 1] || { id: `${p.type.toLowerCase()}_demo`, label: `${p.type} Node` };
+            const label = (nodeData.label || nodeData.id || p.type).slice(0, 16);
+            svgHtml += `
+                <g onclick="app.filterByEntity('${nodeData.label || nodeData.id}')" title="Click to filter feed by ${label}">
+                    <circle cx="${p.x}" cy="${p.y}" r="18" fill="#131d2e" stroke="${p.color}" stroke-width="2" />
+                    <text x="${p.x}" y="${p.y + 4}" fill="#fff" font-size="12" text-anchor="middle">${p.icon}</text>
+                    <text x="${p.x}" y="${p.y + 26}" fill="var(--text-secondary)" font-size="10" font-family="var(--font-mono)" text-anchor="middle">${label}</text>
+                </g>
+            `;
+        });
+
+        // Central Account Node
         svgHtml += `
-            <circle cx="${width / 2}" cy="${height / 2}" r="22" fill="#3b82f6" />
-            <text x="${width / 2}" y="${height / 2 + 4}" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">ACCOUNT</text>
+            <g onclick="app.filterByEntity('${acctId}')" title="Click to filter feed by account ${acctId}">
+                <circle cx="${cx}" cy="${cy}" r="24" fill="#1e3a8a" stroke="#3b82f6" stroke-width="2.5" />
+                <text x="${cx}" y="${cy - 2}" fill="#fff" font-size="10" font-weight="800" text-anchor="middle">ACCOUNT</text>
+                <text x="${cx}" y="${cy + 10}" fill="#93c5fd" font-size="9" font-family="var(--font-mono)" text-anchor="middle">${acctId}</text>
+            </g>
         `;
 
         svgHtml += `</svg>`;
         container.innerHTML = svgHtml;
+    }
+
+    filterByEntity(query) {
+        if (!query) return;
+        this.switchView('feed');
+        const input = document.getElementById('filter-search');
+        if (input) {
+            input.value = query;
+            this.applyFilters();
+            this.showToast(`Filtered feed by: ${query}`, 'info');
+        }
     }
 
     // =========================================================================
@@ -1081,12 +1207,43 @@ class FraudGuardApp {
                 options: { responsive: true, maintainAspectRatio: false }
             });
         }
+
+        // 3. 24-Hour Transaction & Anomaly Activity
+        const ctxHourly = document.getElementById('chart-hourly')?.getContext('2d');
+        if (ctxHourly) {
+            this.charts.hourly = new Chart(ctxHourly, {
+                type: 'bar',
+                data: {
+                    labels: ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'],
+                    datasets: [
+                        { label: 'Normal Volume', data: [14, 6, 12, 38, 45, 42, 36, 28], backgroundColor: '#3b82f6' },
+                        { label: 'Quarantined Anomalies', data: [2, 5, 1, 3, 4, 6, 2, 4], backgroundColor: '#ef4444' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
+            });
+        }
+
+        // 4. Top Triggered Fraud Rules
+        const ctxRules = document.getElementById('chart-rules')?.getContext('2d');
+        if (ctxRules) {
+            this.charts.rules = new Chart(ctxRules, {
+                type: 'bar',
+                data: {
+                    labels: ['IMPOSSIBLE_TRAVEL', 'TOR_EXIT_NODE', 'AMOUNT_SPIKE', 'VELOCITY_SPIKE', 'UNUSUAL_HOUR'],
+                    datasets: [{ label: 'Trigger Count', data: [18, 14, 11, 9, 7], backgroundColor: '#f59e0b' }]
+                },
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
     }
 
     updateCharts() {
-        // Dynamically compute distributions from loaded transactions
         if (!this.charts.risk) return;
         const buckets = [0, 0, 0, 0, 0];
+        const countryCounts = {};
+        const ruleCounts = {};
+
         this.transactions.forEach(t => {
             const s = t.risk_score || 0;
             if (s < 20) buckets[0]++;
@@ -1094,9 +1251,36 @@ class FraudGuardApp {
             else if (s < 60) buckets[2]++;
             else if (s < 80) buckets[3]++;
             else buckets[4]++;
+
+            const c = t.origin?.country || t.transaction_country || 'US';
+            countryCounts[c] = (countryCounts[c] || 0) + 1;
+
+            const flags = t.flags || t.triggered_rules || [];
+            flags.forEach(f => {
+                ruleCounts[f] = (ruleCounts[f] || 0) + 1;
+            });
         });
+
         this.charts.risk.data.datasets[0].data = buckets;
         this.charts.risk.update();
+
+        if (this.charts.country) {
+            const topCountries = Object.entries(countryCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+            if (topCountries.length > 0) {
+                this.charts.country.data.labels = topCountries.map(e => e[0]);
+                this.charts.country.data.datasets[0].data = topCountries.map(e => e[1]);
+                this.charts.country.update();
+            }
+        }
+
+        if (this.charts.rules) {
+            const topRules = Object.entries(ruleCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            if (topRules.length > 0) {
+                this.charts.rules.data.labels = topRules.map(e => e[0]);
+                this.charts.rules.data.datasets[0].data = topRules.map(e => e[1]);
+                this.charts.rules.update();
+            }
+        }
     }
 
     // =========================================================================

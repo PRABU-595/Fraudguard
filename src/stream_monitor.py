@@ -287,6 +287,19 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
             self._serve_file(os.path.join(STATIC_DIR, "app.js"), "application/javascript; charset=utf-8")
             return
 
+        if path == "/favicon.ico":
+            svg = (
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+                '<text y=".9em" font-size="90">🛡️</text></svg>'
+            ).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "image/svg+xml")
+            self.send_header("Content-Length", str(len(svg)))
+            self.send_header("Cache-Control", "public, max-age=86400")
+            self.end_headers()
+            self.wfile.write(svg)
+            return
+
         # 2. Server-Sent Events (SSE /stream)
         if path == "/stream":
             self.send_response(200)

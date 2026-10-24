@@ -396,7 +396,10 @@
                 <h3 id="drawer-tx-id">Transaction Details</h3>
                 <span class="drawer-subtitle" id="drawer-ts">2026-10-24 12:00:00 UTC</span>
             </div>
-            <button class="btn-close" onclick="closeDetailSidebar()">✕</button>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <button class="btn btn-sm btn-outline" id="btn-export-drawer" onclick="window.exportCurrentTransactionJson()" title="Download raw forensic JSON">📥 Export JSON</button>
+                <button class="btn-close" onclick="closeDetailSidebar()">✕</button>
+            </div>
         </div>
 
         <div class="drawer-tabs">
