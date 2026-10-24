@@ -314,12 +314,40 @@
       "location_check": {
         "account_registered_city": "London",
         "account_registered_country": "GB",
+        "account_registered_coordinates": {
+          "lat": 51.5074,
+          "lon": -0.1278
+        },
         "transaction_city": "London",
         "transaction_country": "GB",
+        "transaction_coordinates": {
+          "lat": 51.5074,
+          "lon": -0.1278
+        },
+        "previous_transaction_coordinates": {
+          "lat": 19.076,
+          "lon": 72.8777
+        },
         "distance_km": 0.0,
         "is_international": false,
         "is_impossible_travel": true,
-        "travel_speed_kmh": 25890120.0
+        "travel_distance_km": 7191.7,
+        "travel_speed_kmh": 25890120.0,
+        "speed_threshold_kmh": 900.0,
+        "latest_location": {
+          "source": "carrier_cell_tower",
+          "source_label": "Telecom Carrier Cell Tower",
+          "is_simulated": true,
+          "city": "London",
+          "country": "GB",
+          "coordinates": {
+            "lat": 51.5074,
+            "lon": -0.1278
+          },
+          "accuracy_meters": 55,
+          "freshness_seconds": 117405.5,
+          "timestamp": "2026-10-23T10:00:00Z"
+        }
       },
       "flags": [
         "RAPID_SUCCESSION",
@@ -386,13 +414,43 @@
       "time_analysis": {
         "transaction_hour": 11,
         "transaction_day_of_week": 4,
+        "local_time_formatted": "2026-10-23 11:00:00",
+        "timezone": "America/New_York",
         "is_night_transaction": false,
         "is_weekend": false,
         "account_typical_hours": [
           19
         ],
         "hour_anomaly": true,
-        "time_since_last_txn_mins": null
+        "time_since_last_txn_mins": null,
+        "burst_count_5m": 1,
+        "hourly_distribution_24h": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "velocity_sparkline": []
       },
       "flags": [
         "LOCATION_MISMATCH",
@@ -422,8 +480,10 @@
       "flags": [
         "HIGH_VELOCITY",
         "ORIGIN_TOR",
+        "TOR_EXIT_NODE",
         "VELOCITY_SPIKE",
         "RAPID_SUCCESSION",
+        "BURST_ACTIVITY",
         "INTERNATIONAL_TRANSACTION"
       ]
     },
