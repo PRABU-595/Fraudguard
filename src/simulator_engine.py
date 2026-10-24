@@ -154,9 +154,9 @@ class SimulatorEngine:
             city, country, ip = random.choice(cities)
             return {
                 "transaction_id": tx_id,
-                "source_account": f"acc_{random.randint(1, 5)}",
+                "source_account": f"acc_clean_{random.randint(100, 999)}",
                 "destination_account": f"acc_retail_{random.randint(100, 999)}",
-                "amount": round(random.uniform(15.0, 110.0), 2),
+                "amount": round(random.uniform(15.0, 85.0), 2),
                 "currency": "USD",
                 "txn_type": random.choice(["CREDIT", "DEBIT"]),
                 "channel": random.choice(["POS", "ONLINE_WEB", "MOBILE_APP"]),

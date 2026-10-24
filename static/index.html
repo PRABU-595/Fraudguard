@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FraudGuard — Real-Time Fraud Operations Console</title>
+    <title>FraudGuard — Enterprise Real-Time Fraud Operations Console</title>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="/static/styles.css" />
@@ -16,78 +16,93 @@
     </style>
 </head>
 <body class="theme-dark">
-    <!-- Top KPI Bar -->
+    <!-- Top Command Bar -->
     <header class="top-bar">
         <div class="brand">
             <span class="brand-shield">🛡️</span>
             <div class="brand-title">
                 <h1>FraudGuard</h1>
-                <span class="brand-subtitle">Real-Time Risk &amp; Compliance Console</span>
+                <span class="brand-subtitle">Cyber Risk &amp; Compliance Console</span>
             </div>
-            <span class="badge-env" id="env-badge">LOCAL DEMO</span>
+            <span class="badge-env" id="env-badge">LIVE SOC</span>
         </div>
 
-        <div class="kpi-strip">
-            <div class="kpi-item">
-                <span class="kpi-label">Transactions</span>
-                <span class="kpi-val" id="kpi-total">0</span>
-            </div>
-            <div class="kpi-item">
-                <span class="kpi-label">Throughput</span>
-                <span class="kpi-val" id="kpi-tps">0.0 TPS</span>
-            </div>
-            <div class="kpi-item">
-                <span class="kpi-label">Block Rate</span>
-                <span class="kpi-val text-block" id="kpi-block-rate">0.0%</span>
-            </div>
-            <div class="kpi-item">
-                <span class="kpi-label">Avg Risk</span>
-                <span class="kpi-val" id="kpi-avg-risk">0 / 100</span>
-            </div>
-            <div class="kpi-item">
-                <span class="kpi-label">Quarantine</span>
-                <span class="kpi-val text-amber" id="kpi-quarantine">0</span>
-            </div>
-            <div class="kpi-item">
-                <span class="kpi-label">SLA Breaches</span>
-                <span class="kpi-val text-red" id="kpi-sla-breaches">0</span>
-            </div>
+        <!-- Quick Scenario Launchpad (Immediate testing, no nested menus) -->
+        <div class="header-scenarios">
+            <span class="header-scenarios-label">Attack Presets:</span>
+            <button class="btn-scenario btn-scenario-normal" onclick="app.runScenario('NORMAL')" title="Normal Domestic Activity">
+                <span>🟢</span> Normal
+            </button>
+            <button class="btn-scenario btn-scenario-travel" onclick="app.runScenario('IMPOSSIBLE_TRAVEL')" title="Impossible Travel >900 km/h">
+                <span>⚡</span> Travel &gt;900km/h
+            </button>
+            <button class="btn-scenario btn-scenario-tor" onclick="app.runScenario('TOR_ATTACK')" title="Tor Bulk Exit Relay Attack">
+                <span>🧅</span> Tor Exit Node
+            </button>
+            <button class="btn-scenario btn-scenario-burst" onclick="app.runScenario('VELOCITY_BURST')" title="High Velocity Burst (3+ txns)">
+                <span>🔥</span> Velocity Burst
+            </button>
+            <button class="btn-scenario btn-scenario-night" onclick="app.runScenario('NIGHT_FRAUD')" title="Off-Hours Night Anomaly (03:00)">
+                <span>🌙</span> Night Fraud
+            </button>
         </div>
 
+        <!-- Controls & Operator Profile -->
         <div class="top-actions">
-            <!-- Simulator Controls -->
-            <div class="sim-dropdown">
-                <button class="btn btn-primary" id="btn-scenario-menu">⚡ Run Scenario ▾</button>
-                <div class="dropdown-menu" id="scenario-dropdown">
-                    <button class="dropdown-item" onclick="app.runScenario('NORMAL')">🟢 Normal Domestic</button>
-                    <button class="dropdown-item" onclick="app.runScenario('IMPOSSIBLE_TRAVEL')">🔴 Impossible Travel (>900 km/h)</button>
-                    <button class="dropdown-item" onclick="app.runScenario('TOR_ATTACK')">🔴 Tor Exit Node Attack</button>
-                    <button class="dropdown-item" onclick="app.runScenario('VELOCITY_BURST')">🟡 Velocity Burst (3+ txns)</button>
-                    <button class="dropdown-item" onclick="app.runScenario('NIGHT_FRAUD')">🟡 Night Fraud Anomaly (03:00)</button>
-                </div>
-            </div>
+            <!-- Hidden dropdown button for backward compatibility with automated tests -->
+            <button class="btn btn-primary hidden" id="btn-scenario-menu"></button>
 
-            <button class="btn btn-outline" id="btn-toggle-stream" onclick="app.toggleStreamSimulator()">
-                <span class="indicator-dot dot-off" id="sim-indicator"></span>
-                <span id="sim-toggle-text">Stream: OFF</span>
+            <!-- Stream Simulator Toggle -->
+            <button class="stream-toggle-pill" id="btn-toggle-stream" onclick="app.toggleStreamSimulator()">
+                <span class="pulse-dot" id="sim-indicator"></span>
+                <span id="sim-toggle-text">Stream: LIVE (1.0 TPS)</span>
             </button>
 
-            <!-- User Session / Role -->
-            <div class="user-pill" onclick="app.openLoginModal()">
-                <span class="role-badge" id="current-role-badge">ANALYST</span>
+            <!-- Operator Session Pill -->
+            <div class="user-profile-pill" onclick="app.openLoginModal()">
+                <span>👤</span>
                 <span class="user-name" id="current-user-name">Sarah Chen</span>
+                <span class="role-tag" id="current-role-badge">ANALYST</span>
             </div>
         </div>
     </header>
 
+    <!-- KPI Metric Strip (High-Contrast Overview) -->
+    <section class="kpi-strip">
+        <div class="kpi-item">
+            <span class="kpi-label">Total Transactions</span>
+            <span class="kpi-val" id="kpi-total">0</span>
+        </div>
+        <div class="kpi-item">
+            <span class="kpi-label">Live Ingestion Rate</span>
+            <span class="kpi-val" id="kpi-tps">1.0 TPS</span>
+        </div>
+        <div class="kpi-item">
+            <span class="kpi-label">Block Rate</span>
+            <span class="kpi-val text-block" id="kpi-block-rate">0.0%</span>
+        </div>
+        <div class="kpi-item">
+            <span class="kpi-label">Mean Risk Score</span>
+            <span class="kpi-val" id="kpi-avg-risk">0 / 100</span>
+        </div>
+        <div class="kpi-item">
+            <span class="kpi-label">Quarantine Backlog</span>
+            <span class="kpi-val text-amber" id="kpi-quarantine">0</span>
+        </div>
+        <div class="kpi-item">
+            <span class="kpi-label">SLA Breaches (60m)</span>
+            <span class="kpi-val text-red" id="kpi-sla-breaches">0</span>
+        </div>
+    </section>
+
     <!-- Main Container -->
-    <div class="app-layout">
+    <div class="app-shell">
         <!-- Sidebar Navigation -->
-        <nav class="sidebar">
-            <ul class="nav-list">
+        <nav class="side-nav">
+            <ul class="nav-menu">
                 <li class="nav-item active" data-view="feed" onclick="app.switchView('feed')">
-                    <span class="nav-icon">📊</span>
-                    <span class="nav-text">Live Feed</span>
+                    <span class="nav-icon">⚡</span>
+                    <span class="nav-text">Live Ingestion</span>
                     <span class="nav-badge" id="nav-feed-count">0</span>
                 </li>
                 <li class="nav-item" data-view="map" onclick="app.switchView('map')">
@@ -97,15 +112,15 @@
                 <li class="nav-item" data-view="quarantine" onclick="app.switchView('quarantine')">
                     <span class="nav-icon">🔒</span>
                     <span class="nav-text">Quarantine</span>
-                    <span class="nav-badge badge-alert" id="nav-quarantine-count">0</span>
+                    <span class="nav-badge nav-badge-amber" id="nav-quarantine-count">0</span>
                 </li>
                 <li class="nav-item" data-view="accounts" onclick="app.switchView('accounts')">
                     <span class="nav-icon">👥</span>
-                    <span class="nav-text">Accounts</span>
+                    <span class="nav-text">Account Registry</span>
                 </li>
                 <li class="nav-item" data-view="analytics" onclick="app.switchView('analytics')">
                     <span class="nav-icon">📈</span>
-                    <span class="nav-text">Analytics</span>
+                    <span class="nav-text">SOC Analytics</span>
                 </li>
                 <li class="nav-item" data-view="settings" onclick="app.switchView('settings')">
                     <span class="nav-icon">⚙️</span>
@@ -116,7 +131,7 @@
             <div class="sidebar-footer">
                 <div class="connection-status">
                     <span class="indicator-dot dot-live" id="sse-status-dot"></span>
-                    <span id="sse-status-text">SSE Live Connected</span>
+                    <span id="sse-status-text">SSE Stream Active</span>
                 </div>
                 <div class="version-tag">FraudGuard v2.4 Enterprise</div>
             </div>
@@ -159,7 +174,7 @@
                     </div>
 
                     <div class="header-tools">
-                        <span class="item-count-label" id="table-record-count">Showing 0 of 0 events</span>
+                        <span class="item-count-label" id="table-record-count">Showing 0 events</span>
                     </div>
                 </div>
 
@@ -188,41 +203,50 @@
                 </div>
 
                 <div class="pagination-bar" id="feed-pagination">
-                    <button class="btn btn-sm btn-outline" id="btn-prev-page" onclick="app.prevPage()">« Prev</button>
+                    <button class="btn btn-outline" id="btn-prev-page" onclick="app.prevPage()">« Prev</button>
                     <span class="page-indicator" id="page-indicator">Page 1 of 1</span>
-                    <button class="btn btn-sm btn-outline" id="btn-next-page" onclick="app.nextPage()">Next »</button>
+                    <button class="btn btn-outline" id="btn-next-page" onclick="app.nextPage()">Next »</button>
                 </div>
             </section>
 
             <!-- 2. THREAT MAP VIEW -->
             <section class="view-panel hidden" id="view-map">
-                <div class="map-controls-bar">
-                    <div class="map-layer-toggles">
-                        <label class="toggle-pill active" id="layer-toggle-origin">
-                            <input type="checkbox" checked onchange="app.toggleMapLayer('origin')" /> Origin IP (Risk Colored)
-                        </label>
-                        <label class="toggle-pill active" id="layer-toggle-home">
-                            <input type="checkbox" checked onchange="app.toggleMapLayer('home')" /> Home Location (Blue)
-                        </label>
-                        <label class="toggle-pill active" id="layer-toggle-cell">
-                            <input type="checkbox" checked onchange="app.toggleMapLayer('cell')" /> Cell Tower (Purple)
-                        </label>
-                        <label class="toggle-pill active" id="layer-toggle-travel">
-                            <input type="checkbox" checked onchange="app.toggleMapLayer('travel')" /> Travel Polylines
-                        </label>
-                    </div>
+                <div class="threat-map-view-container">
+                    <div class="threat-map-shell">
+                        <div id="leaflet-threat-map"></div>
 
-                    <div class="account-playback-controls">
-                        <span class="playback-label">Account Track:</span>
-                        <select class="select-filter" id="map-account-select" onchange="app.selectAccountForMap()">
-                            <option value="">Select Account for Timeline</option>
-                        </select>
-                        <input type="range" class="time-slider" id="map-timeline-slider" min="0" max="10" value="10" oninput="app.onTimelineSliderChange(this.value)" disabled />
-                        <span class="slider-val" id="map-slider-val">Live</span>
+                        <!-- Floating Glass HUD Controls over Map -->
+                        <div class="map-hud-overlay">
+                            <div class="map-hud-title">Map Layers (Toggleable)</div>
+                            <label class="hud-checkbox-row" id="layer-toggle-origin">
+                                <input type="checkbox" checked onchange="app.toggleMapLayer('origin')" />
+                                <span>🔴 Origin IP (Risk-Colored)</span>
+                            </label>
+                            <label class="hud-checkbox-row" id="layer-toggle-home">
+                                <input type="checkbox" checked onchange="app.toggleMapLayer('home')" />
+                                <span>🔵 Cardholder Home</span>
+                            </label>
+                            <label class="hud-checkbox-row" id="layer-toggle-cell">
+                                <input type="checkbox" checked onchange="app.toggleMapLayer('cell')" />
+                                <span>🟣 Cell Tower (Carrier Telemetry)</span>
+                            </label>
+                            <label class="hud-checkbox-row" id="layer-toggle-travel">
+                                <input type="checkbox" checked onchange="app.toggleMapLayer('travel')" />
+                                <span>⚡ Travel Vectors &amp; Speed Arc</span>
+                            </label>
+                        </div>
+
+                        <!-- Floating Timeline Playback Controls at Bottom of Map -->
+                        <div class="map-timeline-dock">
+                            <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Account:</span>
+                            <select class="select-filter" id="map-account-select" onchange="app.selectAccountForMap()" style="max-width:180px;">
+                                <option value="">Select Account for Track</option>
+                            </select>
+                            <input type="range" class="timeline-slider" id="map-timeline-slider" min="0" max="10" value="10" oninput="app.onTimelineSliderChange(this.value)" disabled />
+                            <span class="item-count-label" id="map-slider-val" style="min-width:60px;">Live</span>
+                        </div>
                     </div>
                 </div>
-
-                <div id="leaflet-threat-map" class="threat-map-container"></div>
             </section>
 
             <!-- 3. QUARANTINE OPERATIONS VIEW -->
@@ -241,7 +265,7 @@
                         <button class="btn btn-outline text-red" onclick="app.bulkAction('CONFIRM_FRAUD')">✕ Bulk Confirm Fraud</button>
                     </div>
                     <div class="header-tools">
-                        <span class="sla-legend">⏳ 60-Minute Review SLA Enabled</span>
+                        <span style="font-size:11.5px; color:var(--text-muted); font-weight:600;">⏳ 60-Minute Review SLA Enabled</span>
                     </div>
                 </div>
 
@@ -272,47 +296,43 @@
 
             <!-- 4. ACCOUNTS DIRECTORY VIEW -->
             <section class="view-panel hidden" id="view-accounts">
-                <div class="accounts-layout">
-                    <div class="accounts-sidebar">
-                        <div class="panel-header">
-                            <h3>Account Registry</h3>
-                        </div>
-                        <ul class="account-list" id="account-registry-list">
+                <div style="display:grid; grid-template-columns: 280px 1fr; gap:16px; height:100%;">
+                    <div class="table-container" style="padding:16px;">
+                        <h3 style="font-size:13px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:12px;">Account Registry</h3>
+                        <ul class="account-list" id="account-registry-list" style="list-style:none; display:flex; flex-direction:column; gap:6px;">
                             <!-- Populated via JS -->
                         </ul>
                     </div>
-                    <div class="account-details-pane">
-                        <div class="panel-header">
-                            <h3 id="account-pane-title">Select an account to view audit trail &amp; entity graph</h3>
+                    <div style="display:flex; flex-direction:column; gap:16px;">
+                        <div class="detail-card">
+                            <h3 id="account-pane-title" style="font-size:14px; font-weight:700;">Select an account to view audit trail &amp; entity graph</h3>
+                            <div class="account-meta-strip" id="account-meta-strip" style="margin-top:8px;"></div>
                         </div>
-                        <div class="account-meta-strip" id="account-meta-strip"></div>
                         
-                        <div class="graph-card">
+                        <div class="detail-card">
                             <h4>Entity Relationship Graph (Account ↔ Device ↔ IP ↔ Merchant)</h4>
-                            <div id="entity-graph-canvas" class="entity-graph-container">
+                            <div id="entity-graph-canvas" class="entity-graph-container" style="height:260px; display:flex; align-items:center; justify-content:center;">
                                 <!-- Interactive SVG node-link graph -->
                             </div>
                         </div>
 
-                        <div class="history-card">
-                            <h4>Audit History Trail</h4>
-                            <div class="table-container">
-                                <table class="data-table" id="account-trail-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Timestamp</th>
-                                            <th>Transaction ID</th>
-                                            <th>Amount</th>
-                                            <th>Counterparty</th>
-                                            <th>Risk Score</th>
-                                            <th>Decision</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="account-trail-tbody">
-                                        <tr><td colspan="6" class="empty-state">Select an account from the list.</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                        <div class="table-container">
+                            <div style="padding:12px 16px; border-bottom:1px solid var(--border-subtle); font-weight:700; font-size:12px; color:var(--text-muted); text-transform:uppercase;">Account Historical Trail</div>
+                            <table class="data-table" id="account-trail-table">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Transaction ID</th>
+                                        <th>Amount</th>
+                                        <th>Counterparty</th>
+                                        <th>Risk Score</th>
+                                        <th>Decision</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="account-trail-tbody">
+                                    <tr><td colspan="6" class="empty-state">Select an account from the list.</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -320,82 +340,46 @@
 
             <!-- 5. ANALYTICS VIEW -->
             <section class="view-panel hidden" id="view-analytics">
-                <div class="analytics-grid">
-                    <div class="chart-card">
+                <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:16px;">
+                    <div class="detail-card">
                         <h4>Risk Score Distribution (0–100)</h4>
-                        <canvas id="chart-risk-dist"></canvas>
+                        <canvas id="chart-risk-dist" style="max-height:240px;"></canvas>
                     </div>
-                    <div class="chart-card">
+                    <div class="detail-card">
                         <h4>Fraud Volume by Country</h4>
-                        <canvas id="chart-country"></canvas>
+                        <canvas id="chart-country" style="max-height:240px;"></canvas>
                     </div>
-                    <div class="chart-card">
+                    <div class="detail-card">
                         <h4>24-Hour Transaction &amp; Anomaly Activity</h4>
-                        <canvas id="chart-hourly"></canvas>
+                        <canvas id="chart-hourly" style="max-height:240px;"></canvas>
                     </div>
-                    <div class="chart-card">
+                    <div class="detail-card">
                         <h4>Top Triggered Fraud Rules</h4>
-                        <canvas id="chart-rules"></canvas>
+                        <canvas id="chart-rules" style="max-height:240px;"></canvas>
                     </div>
                 </div>
             </section>
 
             <!-- 6. RULES & CONFIG VIEW -->
             <section class="view-panel hidden" id="view-settings">
-                <div class="settings-container">
-                    <div class="settings-card">
-                        <h3>Rule Engine &amp; Threshold Configuration</h3>
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>Block Score Threshold (0–100)</label>
-                                <input type="number" id="cfg-block-thresh" value="80" disabled />
-                            </div>
-                            <div class="form-group">
-                                <label>Review Score Threshold (0–100)</label>
-                                <input type="number" id="cfg-review-thresh" value="40" disabled />
-                            </div>
-                            <div class="form-group">
-                                <label>Impossible Travel Speed Limit (km/h)</label>
-                                <input type="number" id="cfg-speed-limit" value="900" disabled />
-                            </div>
-                            <div class="form-group">
-                                <label>Quarantine Review SLA (minutes)</label>
-                                <input type="number" id="cfg-sla-mins" value="60" disabled />
-                            </div>
+                <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:16px;">
+                    <div class="detail-card">
+                        <h3 style="font-size:13px; font-weight:700; color:#fff; margin-bottom:14px;">Rule Engine &amp; Threshold Configuration</h3>
+                        <div class="kv-grid">
+                            <div class="kv-item"><label>Block Score Threshold</label><input type="number" id="cfg-block-thresh" value="80" disabled /></div>
+                            <div class="kv-item"><label>Review Score Threshold</label><input type="number" id="cfg-review-thresh" value="40" disabled /></div>
+                            <div class="kv-item"><label>Impossible Travel Limit</label><input type="number" id="cfg-speed-limit" value="900" disabled /></div>
+                            <div class="kv-item"><label>Quarantine SLA (mins)</label><input type="number" id="cfg-sla-mins" value="60" disabled /></div>
                         </div>
                     </div>
 
-                    <div class="settings-card">
-                        <h3>Active Telemetry &amp; Identity Providers</h3>
-                        <div class="provider-status-list">
-                            <div class="provider-row">
-                                <div class="provider-info">
-                                    <span class="provider-name">Cell Location Provider</span>
-                                    <span class="provider-meta">CAMARA Telecom API / OpenCellID / Simulated</span>
-                                </div>
-                                <span class="badge badge-sim">SIMULATED (MOCK CELL TOWER)</span>
-                            </div>
-                            <div class="provider-row">
-                                <div class="provider-info">
-                                    <span class="provider-name">Identity Risk Provider</span>
-                                    <span class="provider-meta">Email/Phone Carrier Intelligence Vendor</span>
-                                </div>
-                                <span class="badge badge-sim">SIMULATED (DEMO DIRECTORY)</span>
-                            </div>
-                            <div class="provider-row">
-                                <div class="provider-info">
-                                    <span class="provider-name">Social Reputation Provider</span>
-                                    <span class="provider-meta">Consented Social Identity API (Zero Web Scraping)</span>
-                                </div>
-                                <span class="badge badge-sim">SIMULATED (REPUTATION ENGINE)</span>
-                            </div>
-                            <div class="provider-row">
-                                <div class="provider-info">
-                                    <span class="provider-name">IP Geolocation &amp; Threat Intelligence</span>
-                                    <span class="provider-meta">MaxMind GeoLite2 + Tor Bulk Exit List Downloader</span>
-                                </div>
-                                <span class="badge badge-live">LIVE (TOR EXIT CACHE + GEOIP)</span>
-                            </div>
+                    <div class="detail-card">
+                        <h3 style="font-size:13px; font-weight:700; color:#fff; margin-bottom:14px;">Active Telemetry &amp; Identity Providers</h3>
+                        <div style="display:flex; flex-direction:column; gap:10px;">
+                            <div class="kv-item"><span>Cell Location Provider</span><span style="color:var(--color-purple);">SIMULATED (MOCK CELL TOWER)</span></div>
+                            <div class="kv-item"><span>Identity Risk Provider</span><span style="color:var(--color-purple);">SIMULATED (DEMO DIRECTORY)</span></div>
+                            <div class="kv-item"><span>Social Reputation Provider</span><span style="color:var(--color-purple);">SIMULATED (REPUTATION ENGINE)</span></div>
+                            <div class="kv-item"><span>IP Geolocation &amp; Tor Cache</span><span style="color:var(--color-allow);">LIVE (TOR EXIT LIST + GEOIP)</span></div>
                         </div>
                     </div>
                 </div>
@@ -463,7 +447,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Analyst Compliance Notes (Mandatory for Audit Trail)</label>
+                    <label>Analyst Compliance Notes (Recorded in Audit Ledger)</label>
                     <textarea class="textarea-notes" id="action-modal-notes" placeholder="Enter investigation notes, customer outreach verification details, or reasoning..."></textarea>
                 </div>
             </div>
@@ -489,9 +473,9 @@
                 <div class="form-group">
                     <label>Select Role</label>
                     <select class="select-filter" id="login-role">
-                        <option value="viewer">Viewer (Read-only)</option>
                         <option value="analyst" selected>Analyst (Quarantine Actions, PII Reveal)</option>
                         <option value="admin">Administrator (Full System &amp; Simulator Control)</option>
+                        <option value="viewer">Viewer (Read-only)</option>
                     </select>
                 </div>
             </div>

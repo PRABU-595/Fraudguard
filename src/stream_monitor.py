@@ -5,7 +5,7 @@ Serves modular static UI (HTML/JS/CSS), Server-Sent Events (SSE /stream),
 and REST APIs for transactions, threat map, accounts, quarantine SLA, and telemetry.
 """
 
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 from datetime import datetime, timedelta, timezone
 import time
@@ -13,6 +13,7 @@ import os
 import sys
 import json
 import queue
+import socket
 from typing import Any, Dict, List, Optional, Tuple
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -580,9 +581,18 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
         pass
 
 
+class ThreadedConsoleServer(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        # Silently absorb client disconnects (ConnectionResetError, BrokenPipeError) on SSE
+        pass
+
+
 def run_server(port: int = 8081) -> None:
     server_address = ("0.0.0.0", port)
-    httpd = HTTPServer(server_address, TelemetryHTTPRequestHandler)
+    httpd = ThreadedConsoleServer(server_address, TelemetryHTTPRequestHandler)
     print("\n==========================================================================")
     print(f" FraudGuard Real-Time Console Running at: http://localhost:{port}")
     print("==========================================================================\n")

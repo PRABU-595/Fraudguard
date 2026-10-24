@@ -49,7 +49,7 @@ class FraudGuardApp {
         this.currentUser = {
             name: "Sarah Chen",
             role: "analyst", // viewer, analyst, admin
-            token: "analyst-token-2026"
+            token: "fg-analyst-demo-key-2026"
         };
 
         // Map state
@@ -85,6 +85,28 @@ class FraudGuardApp {
         this.initCharts();
         this.startSLATicker();
         this.pollSimulatorStatus();
+        this.initKeyboardShortcuts();
+    }
+
+    initKeyboardShortcuts() {
+        window.addEventListener('keydown', (e) => {
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+            if (e.key === 'Escape') {
+                this.closeDrawer();
+                this.closeActionModal();
+                this.closeLoginModal();
+            } else if (e.key === '1') {
+                this.runScenario('NORMAL');
+            } else if (e.key === '2') {
+                this.runScenario('IMPOSSIBLE_TRAVEL');
+            } else if (e.key === '3') {
+                this.runScenario('TOR_ATTACK');
+            } else if (e.key === '4') {
+                this.runScenario('VELOCITY_BURST');
+            } else if (e.key === '5') {
+                this.runScenario('NIGHT_FRAUD');
+            }
+        });
     }
 
     // =========================================================================
@@ -300,11 +322,11 @@ class FraudGuardApp {
             attributionControl: false
         });
 
-        // Dark theme tiles: CartoDB Dark Matter with OSM fallback
-        const tileUrl = window.MAP_TILE_URL || "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+        // Dark-styled OpenStreetMap tiles (100% free, zero API key required)
+        const tileUrl = window.MAP_TILE_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
         L.tileLayer(tileUrl, {
-            subdomains: 'abcd',
-            maxZoom: 19
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
         }).addTo(this.map);
 
         // Layer Groups
@@ -561,11 +583,11 @@ class FraudGuardApp {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-API-Key': this.currentUser.token,
+                    'X-API-Key': this.currentUser.token || 'fg-analyst-demo-key-2026',
                     'X-Analyst-ID': this.currentUser.name,
                     'X-User-Role': this.currentUser.role
                 },
-                body: JSON.stringify({ action, reason, notes })
+                body: JSON.stringify({ action, reason, notes, api_key: this.currentUser.token || 'fg-analyst-demo-key-2026' })
             });
 
             const data = await res.json();
@@ -597,14 +619,15 @@ class FraudGuardApp {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-API-Key': this.currentUser.token,
+                    'X-API-Key': this.currentUser.token || 'fg-analyst-demo-key-2026',
                     'X-Analyst-ID': this.currentUser.name,
                     'X-User-Role': this.currentUser.role
                 },
                 body: JSON.stringify({
                     transaction_ids: ids,
                     action: action,
-                    reason: "Bulk analyst disposition"
+                    reason: "Bulk analyst disposition",
+                    api_key: this.currentUser.token || 'fg-analyst-demo-key-2026'
                 })
             });
 
@@ -709,16 +732,10 @@ class FraudGuardApp {
 
     renderDrawerOverview(tx) {
         const score = tx.risk_score || 0;
-        const gaugeClass = score >= 80 ? 'gauge-block' : (score >= 40 ? 'gauge-review' : 'gauge-allow');
+        const gaugeHtml = window.renderRiskGauge(score);
 
         return `
-            <div class="gauge-box ${gaugeClass}">
-                <div class="gauge-score">${score}</div>
-                <div>
-                    <h3 style="font-size:16px;">Decision: ${tx.decision}</h3>
-                    <p style="font-size:12px; color:var(--text-secondary);">Status: ${tx.status} | Execution Time: ${tx.execution_ms || 1.2} ms</p>
-                </div>
-            </div>
+            ${gaugeHtml}
 
             <div class="detail-card">
                 <h4>Payment &amp; Transaction Details</h4>
@@ -764,7 +781,7 @@ class FraudGuardApp {
         if (!miniContainer) return;
 
         const miniMap = L.map('mini-drawer-map', { attributionControl: false, zoomControl: false });
-        L.tileLayer(window.MAP_TILE_URL || "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 18 }).addTo(miniMap);
+        L.tileLayer(window.MAP_TILE_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '' }).addTo(miniMap);
 
         const origin = tx.origin?.coordinates || { lat: 40.7128, lon: -74.0060 };
         const home = tx.location_check?.account_registered_coordinates || origin;
@@ -1224,7 +1241,25 @@ window.closeDetailSidebar = function() { app.closeDrawer(); };
 window.renderRiskGauge = function(score) {
     const s = Number(score) || 0;
     const cls = s >= 80 ? 'gauge-block' : (s >= 40 ? 'gauge-review' : 'gauge-allow');
-    return `<div class="gauge-box ${cls}"><div class="gauge-score">${s}</div><div>Score: ${s}/100</div></div>`;
+    const color = s >= 80 ? '#ef4444' : (s >= 40 ? '#f59e0b' : '#10b981');
+    const band = s >= 80 ? 'High Risk (Decline)' : (s >= 40 ? 'Elevated (Review)' : 'Normal (Approved)');
+    return `
+        <div class="gauge-box ${cls}" style="display:flex; align-items:center; gap:20px; padding:16px; border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
+            <div style="position:relative; width:72px; height:72px; display:flex; align-items:center; justify-content:center;">
+                <svg viewBox="0 0 36 36" style="width:100%; height:100%; transform:rotate(-90deg);">
+                    <path stroke="rgba(255,255,255,0.1)" stroke-width="3.5" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <path stroke="${color}" stroke-dasharray="${s}, 100" stroke-width="3.5" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                </svg>
+                <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                    <span class="gauge-score" style="font-size:22px; font-weight:800; font-family:var(--font-mono);">${s}</span>
+                </div>
+            </div>
+            <div>
+                <div style="font-size:14px; font-weight:700; color:#fff;">${band}</div>
+                <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Probability Assessment: ${s}% score intensity</div>
+            </div>
+        </div>
+    `;
 };
 window.exportCurrentTransactionJson = function() {
     if (!app.selectedTx) return;
