@@ -1,0 +1,126 @@
+[
+  {
+    "transaction_id": "tx_q_act_test",
+    "action": "CONFIRM_FRAUD",
+    "previous_status": "CONFIRMED_FRAUD",
+    "new_status": "CONFIRMED_FRAUD",
+    "operator": "analyst_test",
+    "role": "analyst",
+    "reason": "Confirmed malicious Tor relay node",
+    "notes": null,
+    "timestamp": "2026-10-24T15:53:21Z"
+  },
+  {
+    "transaction_id": "tx_q_act_test",
+    "action": "CONFIRM_FRAUD",
+    "previous_status": "CONFIRMED_FRAUD",
+    "new_status": "CONFIRMED_FRAUD",
+    "operator": "analyst_test",
+    "role": "analyst",
+    "reason": "Confirmed malicious Tor relay node",
+    "notes": null,
+    "timestamp": "2026-10-24T15:54:06Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-10-24T15:59:35Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-10-24T16:00:37Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-10-24T16:01:47Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-10-24T16:03:16Z"
+  },
+  {
+    "transaction_id": "tx_sim_1792858269737_4",
+    "action": "PII_UNMASK_REVEAL",
+    "operator": "Sarah Chen",
+    "role": "analyst",
+    "timestamp": "2026-10-24T16:11:09Z"
+  },
+  {
+    "transaction_id": "tx_sim_1792858323175_3",
+    "action": "CONFIRM_FRAUD",
+    "previous_status": "QUARANTINED",
+    "new_status": "CONFIRMED_FRAUD",
+    "operator": "QA_Lead",
+    "role": "analyst",
+    "reason": "Confirmed exit relay",
+    "notes": "Blocked in test",
+    "timestamp": "2026-10-24T16:12:03Z"
+  },
+  {
+    "transaction_id": "tx_sim_1792858323245_4",
+    "action": "PII_UNMASK_REVEAL",
+    "operator": "Sarah Chen",
+    "role": "analyst",
+    "timestamp": "2026-10-24T16:12:03Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-10-24T16:12:14Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-10-24T16:13:19Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-10-24T16:14:33Z"
+  }
+]

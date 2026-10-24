@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FraudGuard — Real-Time Fraud Operations Console</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <style>
+        @media (max-width: 600px) {
+            .app-shell { flex-direction: column; }
+            .top-bar { flex-wrap: wrap; }
+            .detail-drawer { width: 100vw; }
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <!-- Top KPI Bar -->
+    <header class="top-bar">
+        <div class="brand">
+            <span class="brand-shield">🛡️</span>
+            <div class="brand-title">
+                <h1>FraudGuard</h1>
+                <span class="brand-subtitle">Real-Time Risk &amp; Compliance Console</span>
+            </div>
+            <span class="badge-env" id="env-badge">LOCAL DEMO</span>
+        </div>
+
+        <div class="kpi-strip">
+            <div class="kpi-item">
+                <span class="kpi-label">Transactions</span>
+                <span class="kpi-val" id="kpi-total">0</span>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Throughput</span>
+                <span class="kpi-val" id="kpi-tps">0.0 TPS</span>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Block Rate</span>
+                <span class="kpi-val text-block" id="kpi-block-rate">0.0%</span>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Avg Risk</span>
+                <span class="kpi-val" id="kpi-avg-risk">0 / 100</span>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Quarantine</span>
+                <span class="kpi-val text-amber" id="kpi-quarantine">0</span>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">SLA Breaches</span>
+                <span class="kpi-val text-red" id="kpi-sla-breaches">0</span>
+            </div>
+        </div>
+
+        <div class="top-actions">
+            <!-- Simulator Controls -->
+            <div class="sim-dropdown">
+                <button class="btn btn-primary" id="btn-scenario-menu">⚡ Run Scenario ▾</button>
+                <div class="dropdown-menu" id="scenario-dropdown">
+                    <button class="dropdown-item" onclick="app.runScenario('NORMAL')">🟢 Normal Domestic</button>
+                    <button class="dropdown-item" onclick="app.runScenario('IMPOSSIBLE_TRAVEL')">🔴 Impossible Travel (>900 km/h)</button>
+                    <button class="dropdown-item" onclick="app.runScenario('TOR_ATTACK')">🔴 Tor Exit Node Attack</button>
+                    <button class="dropdown-item" onclick="app.runScenario('VELOCITY_BURST')">🟡 Velocity Burst (3+ txns)</button>
+                    <button class="dropdown-item" onclick="app.runScenario('NIGHT_FRAUD')">🟡 Night Fraud Anomaly (03:00)</button>
+                </div>
+            </div>
+
+            <button class="btn btn-outline" id="btn-toggle-stream" onclick="app.toggleStreamSimulator()">
+                <span class="indicator-dot dot-off" id="sim-indicator"></span>
+                <span id="sim-toggle-text">Stream: OFF</span>
+            </button>
+
+            <!-- User Session / Role -->
+            <div class="user-pill" onclick="app.openLoginModal()">
+                <span class="role-badge" id="current-role-badge">ANALYST</span>
+                <span class="user-name" id="current-user-name">Sarah Chen</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <ul class="nav-list">
+                <li class="nav-item active" data-view="feed" onclick="app.switchView('feed')">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Live Feed</span>
+                    <span class="nav-badge" id="nav-feed-count">0</span>
+                </li>
+                <li class="nav-item" data-view="map" onclick="app.switchView('map')">
+                    <span class="nav-icon">🗺️</span>
+                    <span class="nav-text">Threat Map</span>
+                </li>
+                <li class="nav-item" data-view="quarantine" onclick="app.switchView('quarantine')">
+                    <span class="nav-icon">🔒</span>
+                    <span class="nav-text">Quarantine</span>
+                    <span class="nav-badge badge-alert" id="nav-quarantine-count">0</span>
+                </li>
+                <li class="nav-item" data-view="accounts" onclick="app.switchView('accounts')">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Accounts</span>
+                </li>
+                <li class="nav-item" data-view="analytics" onclick="app.switchView('analytics')">
+                    <span class="nav-icon">📈</span>
+                    <span class="nav-text">Analytics</span>
+                </li>
+                <li class="nav-item" data-view="settings" onclick="app.switchView('settings')">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Rules &amp; Config</span>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="connection-status">
+                    <span class="indicator-dot dot-live" id="sse-status-dot"></span>
+                    <span id="sse-status-text">SSE Live Connected</span>
+                </div>
+                <div class="version-tag">FraudGuard v2.4 Enterprise</div>
+            </div>
+        </nav>
+
+        <!-- Dynamic Content Body -->
+        <main class="content-area">
+            <!-- 1. LIVE FEED VIEW -->
+            <section class="view-panel" id="view-feed">
+                <div class="panel-header">
+                    <div class="filter-bar">
+                        <input type="text" class="input-search" id="filter-search" placeholder="Search Transaction ID, Account, IP, City..." oninput="app.applyFilters()" />
+                        
+                        <select class="select-filter" id="filter-decision" onchange="app.applyFilters()">
+                            <option value="">All Decisions</option>
+                            <option value="ALLOW">APPROVE (Allow)</option>
+                            <option value="REVIEW_QUEUE">REVIEW QUEUE</option>
+                            <option value="BLOCK">BLOCK (Quarantined)</option>
+                        </select>
+
+                        <select class="select-filter" id="filter-country" onchange="app.applyFilters()">
+                            <option value="">All Countries</option>
+                            <option value="US">United States (US)</option>
+                            <option value="GB">United Kingdom (GB)</option>
+                            <option value="DE">Germany (DE)</option>
+                            <option value="IN">India (IN)</option>
+                            <option value="NL">Netherlands (NL)</option>
+                            <option value="RO">Romania (RO)</option>
+                        </select>
+
+                        <select class="select-filter" id="filter-channel" onchange="app.applyFilters()">
+                            <option value="">All Channels</option>
+                            <option value="ONLINE_WEB">Web</option>
+                            <option value="MOBILE_APP">Mobile App</option>
+                            <option value="POS">POS Terminal</option>
+                            <option value="WIRE">Wire Transfer</option>
+                        </select>
+
+                        <button class="btn btn-outline" id="btn-pause-feed" onclick="app.togglePauseFeed()">⏸ Pause Feed</button>
+                    </div>
+
+                    <div class="header-tools">
+                        <span class="item-count-label" id="table-record-count">Showing 0 of 0 events</span>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table" id="transactions-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Transaction ID</th>
+                                <th>Account</th>
+                                <th>Amount</th>
+                                <th>Channel</th>
+                                <th>Origin Location</th>
+                                <th>Risk Score</th>
+                                <th>Decision</th>
+                                <th>Key Signals</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-tbody">
+                            <tr data-tx-id="placeholder">
+                                <td colspan="10" class="empty-state">Waiting for real-time transactions...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-bar" id="feed-pagination">
+                    <button class="btn btn-sm btn-outline" id="btn-prev-page" onclick="app.prevPage()">« Prev</button>
+                    <span class="page-indicator" id="page-indicator">Page 1 of 1</span>
+                    <button class="btn btn-sm btn-outline" id="btn-next-page" onclick="app.nextPage()">Next »</button>
+                </div>
+            </section>
+
+            <!-- 2. THREAT MAP VIEW -->
+            <section class="view-panel hidden" id="view-map">
+                <div class="map-controls-bar">
+                    <div class="map-layer-toggles">
+                        <label class="toggle-pill active" id="layer-toggle-origin">
+                            <input type="checkbox" checked onchange="app.toggleMapLayer('origin')" /> Origin IP (Risk Colored)
+                        </label>
+                        <label class="toggle-pill active" id="layer-toggle-home">
+                            <input type="checkbox" checked onchange="app.toggleMapLayer('home')" /> Home Location (Blue)
+                        </label>
+                        <label class="toggle-pill active" id="layer-toggle-cell">
+                            <input type="checkbox" checked onchange="app.toggleMapLayer('cell')" /> Cell Tower (Purple)
+                        </label>
+                        <label class="toggle-pill active" id="layer-toggle-travel">
+                            <input type="checkbox" checked onchange="app.toggleMapLayer('travel')" /> Travel Polylines
+                        </label>
+                    </div>
+
+                    <div class="account-playback-controls">
+                        <span class="playback-label">Account Track:</span>
+                        <select class="select-filter" id="map-account-select" onchange="app.selectAccountForMap()">
+                            <option value="">Select Account for Timeline</option>
+                        </select>
+                        <input type="range" class="time-slider" id="map-timeline-slider" min="0" max="10" value="10" oninput="app.onTimelineSliderChange(this.value)" disabled />
+                        <span class="slider-val" id="map-slider-val">Live</span>
+                    </div>
+                </div>
+
+                <div id="leaflet-threat-map" class="threat-map-container"></div>
+            </section>
+
+            <!-- 3. QUARANTINE OPERATIONS VIEW -->
+            <section class="view-panel hidden" id="view-quarantine">
+                <div class="panel-header">
+                    <div class="filter-bar">
+                        <select class="select-filter" id="quarantine-status-filter" onchange="app.loadQuarantineFeed()">
+                            <option value="QUARANTINED">Status: Active Quarantined</option>
+                            <option value="RELEASED">Status: Released</option>
+                            <option value="CONFIRMED_FRAUD">Status: Confirmed Fraud</option>
+                            <option value="ESCALATED">Status: Escalated</option>
+                            <option value="ALL">Status: All Quarantine History</option>
+                        </select>
+
+                        <button class="btn btn-outline" onclick="app.bulkAction('RELEASE')">✓ Bulk Release</button>
+                        <button class="btn btn-outline text-red" onclick="app.bulkAction('CONFIRM_FRAUD')">✕ Bulk Confirm Fraud</button>
+                    </div>
+                    <div class="header-tools">
+                        <span class="sla-legend">⏳ 60-Minute Review SLA Enabled</span>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table" id="quarantine-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="quarantine-select-all" onclick="app.toggleSelectAllQuarantine(this)" /></th>
+                                <th>Quarantine Timestamp</th>
+                                <th>Transaction ID</th>
+                                <th>Account</th>
+                                <th>Amount</th>
+                                <th>Risk Score</th>
+                                <th>SLA Countdown</th>
+                                <th>Reason Codes</th>
+                                <th>Status</th>
+                                <th>Analyst Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="quarantine-tbody">
+                            <tr>
+                                <td colspan="10" class="empty-state">No quarantined transactions found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 4. ACCOUNTS DIRECTORY VIEW -->
+            <section class="view-panel hidden" id="view-accounts">
+                <div class="accounts-layout">
+                    <div class="accounts-sidebar">
+                        <div class="panel-header">
+                            <h3>Account Registry</h3>
+                        </div>
+                        <ul class="account-list" id="account-registry-list">
+                            <!-- Populated via JS -->
+                        </ul>
+                    </div>
+                    <div class="account-details-pane">
+                        <div class="panel-header">
+                            <h3 id="account-pane-title">Select an account to view audit trail &amp; entity graph</h3>
+                        </div>
+                        <div class="account-meta-strip" id="account-meta-strip"></div>
+                        
+                        <div class="graph-card">
+                            <h4>Entity Relationship Graph (Account ↔ Device ↔ IP ↔ Merchant)</h4>
+                            <div id="entity-graph-canvas" class="entity-graph-container">
+                                <!-- Interactive SVG node-link graph -->
+                            </div>
+                        </div>
+
+                        <div class="history-card">
+                            <h4>Audit History Trail</h4>
+                            <div class="table-container">
+                                <table class="data-table" id="account-trail-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Timestamp</th>
+                                            <th>Transaction ID</th>
+                                            <th>Amount</th>
+                                            <th>Counterparty</th>
+                                            <th>Risk Score</th>
+                                            <th>Decision</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="account-trail-tbody">
+                                        <tr><td colspan="6" class="empty-state">Select an account from the list.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. ANALYTICS VIEW -->
+            <section class="view-panel hidden" id="view-analytics">
+                <div class="analytics-grid">
+                    <div class="chart-card">
+                        <h4>Risk Score Distribution (0–100)</h4>
+                        <canvas id="chart-risk-dist"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h4>Fraud Volume by Country</h4>
+                        <canvas id="chart-country"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h4>24-Hour Transaction &amp; Anomaly Activity</h4>
+                        <canvas id="chart-hourly"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h4>Top Triggered Fraud Rules</h4>
+                        <canvas id="chart-rules"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. RULES & CONFIG VIEW -->
+            <section class="view-panel hidden" id="view-settings">
+                <div class="settings-container">
+                    <div class="settings-card">
+                        <h3>Rule Engine &amp; Threshold Configuration</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Block Score Threshold (0–100)</label>
+                                <input type="number" id="cfg-block-thresh" value="80" disabled />
+                            </div>
+                            <div class="form-group">
+                                <label>Review Score Threshold (0–100)</label>
+                                <input type="number" id="cfg-review-thresh" value="40" disabled />
+                            </div>
+                            <div class="form-group">
+                                <label>Impossible Travel Speed Limit (km/h)</label>
+                                <input type="number" id="cfg-speed-limit" value="900" disabled />
+                            </div>
+                            <div class="form-group">
+                                <label>Quarantine Review SLA (minutes)</label>
+                                <input type="number" id="cfg-sla-mins" value="60" disabled />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Active Telemetry &amp; Identity Providers</h3>
+                        <div class="provider-status-list">
+                            <div class="provider-row">
+                                <div class="provider-info">
+                                    <span class="provider-name">Cell Location Provider</span>
+                                    <span class="provider-meta">CAMARA Telecom API / OpenCellID / Simulated</span>
+                                </div>
+                                <span class="badge badge-sim">SIMULATED (MOCK CELL TOWER)</span>
+                            </div>
+                            <div class="provider-row">
+                                <div class="provider-info">
+                                    <span class="provider-name">Identity Risk Provider</span>
+                                    <span class="provider-meta">Email/Phone Carrier Intelligence Vendor</span>
+                                </div>
+                                <span class="badge badge-sim">SIMULATED (DEMO DIRECTORY)</span>
+                            </div>
+                            <div class="provider-row">
+                                <div class="provider-info">
+                                    <span class="provider-name">Social Reputation Provider</span>
+                                    <span class="provider-meta">Consented Social Identity API (Zero Web Scraping)</span>
+                                </div>
+                                <span class="badge badge-sim">SIMULATED (REPUTATION ENGINE)</span>
+                            </div>
+                            <div class="provider-row">
+                                <div class="provider-info">
+                                    <span class="provider-name">IP Geolocation &amp; Threat Intelligence</span>
+                                    <span class="provider-meta">MaxMind GeoLite2 + Tor Bulk Exit List Downloader</span>
+                                </div>
+                                <span class="badge badge-live">LIVE (TOR EXIT CACHE + GEOIP)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Slide-in Transaction Drawer -->
+    <div class="drawer-overlay hidden" id="drawer-overlay" onclick="app.closeDrawer()"></div>
+    <div id="sidebar-backdrop" class="drawer-overlay hidden" onclick="closeDetailSidebar()"></div>
+    <aside class="detail-drawer hidden" id="detail-drawer">
+        <div class="drawer-header">
+            <div>
+                <h3 id="drawer-tx-id">Transaction Details</h3>
+                <span class="drawer-subtitle" id="drawer-ts">2026-10-24 12:00:00 UTC</span>
+            </div>
+            <button class="btn-close" onclick="closeDetailSidebar()">✕</button>
+        </div>
+
+        <div class="drawer-tabs">
+            <button class="dtab active" onclick="app.switchDrawerTab('overview')">Overview</button>
+            <button class="dtab" onclick="app.switchDrawerTab('map')">Map</button>
+            <button class="dtab" onclick="app.switchDrawerTab('risk')">Risk Signals</button>
+            <button class="dtab" onclick="app.switchDrawerTab('history')">History</button>
+            <button class="dtab" onclick="app.switchDrawerTab('customer')">Customer</button>
+            <button class="dtab" onclick="app.switchDrawerTab('network')">Network</button>
+            <button class="dtab" onclick="app.switchDrawerTab('raw')">Raw JSON</button>
+            <button class="dtab" onclick="app.switchDrawerTab('audit')">Audit Log</button>
+        </div>
+
+        <div class="drawer-body" id="drawer-body">
+            <div id="drawer-spinner" class="spinner-container hidden">
+                <div class="spinner"></div>
+                <span>Loading full forensic trace...</span>
+            </div>
+            <!-- Dynamic Tab Content Rendered via JS -->
+        </div>
+
+        <div class="drawer-footer" id="drawer-footer">
+            <!-- Analyst Action Buttons Rendered via JS -->
+        </div>
+    </aside>
+
+    <!-- Analyst Action Modal -->
+    <div class="modal-overlay hidden" id="action-modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="action-modal-title">Quarantine Action</h3>
+                <button class="btn-close" onclick="app.closeActionModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Action to Perform</label>
+                    <input type="text" id="action-modal-action-display" readonly />
+                </div>
+                <div class="form-group">
+                    <label>Analyst Reason Code</label>
+                    <select class="select-filter" id="action-modal-reason">
+                        <option value="CARDHOLDER_VERIFIED_LEGITIMATE">Cardholder verified legitimate activity</option>
+                        <option value="FALSE_POSITIVE_VPN">False positive VPN / Travel</option>
+                        <option value="CONFIRMED_ACCOUNT_TAKEOVER">Confirmed Account Takeover (ATO)</option>
+                        <option value="MALICIOUS_TOR_ATTACK">Confirmed malicious Tor / Anonymizer</option>
+                        <option value="SUSPICIOUS_UNRESPONSIVE">Customer unresponsive to verification</option>
+                        <option value="ESCALATE_TO_SENIOR_RISK">Escalate to Senior Compliance Team</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Analyst Compliance Notes (Mandatory for Audit Trail)</label>
+                    <textarea class="textarea-notes" id="action-modal-notes" placeholder="Enter investigation notes, customer outreach verification details, or reasoning..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="app.closeActionModal()">Cancel</button>
+                <button class="btn btn-primary" id="btn-submit-action" onclick="app.submitAction()">Confirm Action</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login / Role Switch Modal -->
+    <div class="modal-overlay hidden" id="login-modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Operator Authentication &amp; Role</h3>
+                <button class="btn-close" onclick="app.closeLoginModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Operator Name</label>
+                    <input type="text" id="login-username" value="Sarah Chen" />
+                </div>
+                <div class="form-group">
+                    <label>Select Role</label>
+                    <select class="select-filter" id="login-role">
+                        <option value="viewer">Viewer (Read-only)</option>
+                        <option value="analyst" selected>Analyst (Quarantine Actions, PII Reveal)</option>
+                        <option value="admin">Administrator (Full System &amp; Simulator Control)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="app.closeLoginModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="app.saveLogin()">Save Session</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/app.js"></script>
+    <script>
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+        function closeDetailSidebar() {
+            if (window.app && typeof window.app.closeDrawer === 'function') {
+                window.app.closeDrawer();
+            }
+        }
+        function exportCurrentTransactionJson(txId) {
+            if (window.app && typeof window.app.exportCurrentTransactionJson === 'function') {
+                window.app.exportCurrentTransactionJson(txId);
+            } else {
+                window.location.href = '/transaction/' + encodeURIComponent(txId || '') + '/export';
+            }
+        }
+    </script>
+</body>
+</html>

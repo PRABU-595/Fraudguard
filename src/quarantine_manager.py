@@ -144,15 +144,22 @@ class QuarantineManager:
         role = "analyst"
         analyst_id = "analyst_operator"
 
-        if not provided_key and isinstance(headers, dict):
+        norm_headers = {}
+        if isinstance(headers, dict):
+            for k, v in headers.items():
+                norm_headers[str(k).lower()] = v
+
+        if not provided_key and norm_headers:
+            auth_h = norm_headers.get("authorization", "")
+            if auth_h.lower().startswith("bearer "):
+                auth_h = auth_h[7:].strip()
+
             provided_key = (
-                headers.get("X-API-Key")
-                or headers.get("x-api-key")
-                or headers.get("Authorization", "").replace("Bearer ", "").strip()
-                or headers.get("authorization", "").replace("Bearer ", "").strip()
+                norm_headers.get("x-api-key")
+                or auth_h
             )
-            analyst_id = headers.get("X-Analyst-ID") or headers.get("x-analyst-id") or analyst_id
-            role = headers.get("X-User-Role") or headers.get("x-user-role") or role
+            analyst_id = norm_headers.get("x-analyst-id") or analyst_id
+            role = norm_headers.get("x-user-role") or role
 
         # Valid keys: exact API key, demo key, or admin token
         valid = (provided_key == self.api_key) or (provided_key in ("admin-token-2026", "analyst-token-2026", "-".join(("fg", "analyst", "demo", "key", "2026"))))
