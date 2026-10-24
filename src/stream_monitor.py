@@ -14,6 +14,7 @@ import sys
 import json
 import queue
 import socket
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -242,6 +243,23 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
 
+    def _send_method_not_allowed(self, allowed: List[str]) -> None:
+        allow_str = ", ".join(allowed)
+        self._send_json(405, {
+            "error": "METHOD_NOT_ALLOWED",
+            "message": f"HTTP method '{self.command}' is not supported on this endpoint. Allowed methods: {allow_str}",
+            "allowed_methods": allowed
+        }, extra_headers={"Allow": allow_str})
+
+    def do_PUT(self) -> None:
+        self._send_method_not_allowed(["GET", "POST", "OPTIONS"])
+
+    def do_DELETE(self) -> None:
+        self._send_method_not_allowed(["GET", "POST", "OPTIONS"])
+
+    def do_PATCH(self) -> None:
+        self._send_method_not_allowed(["GET", "POST", "OPTIONS"])
+
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path
@@ -363,6 +381,15 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
         if path.startswith("/api/accounts/") and path.endswith("/trail"):
             parts = [p for p in path.split("/") if p]
             account_id = unquote(parts[2])
+
+            # Input validation & sanitization
+            if not account_id or len(account_id) > 64 or ".." in account_id or not re.match(r"^[A-Za-z0-9_\-\.\:\@]+$", account_id):
+                self._send_json(400, {
+                    "error": "INVALID_ACCOUNT_ID",
+                    "message": "Account ID must be between 1 and 64 characters and contain only alphanumeric, dash, dot, or underscore characters."
+                })
+                return
+
             history = self.get_db().get_account_transactions(account_id, limit=50)
 
             # Compute trail metadata
@@ -389,6 +416,15 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
         if path.startswith("/api/accounts/") and path.endswith("/locations"):
             parts = [p for p in path.split("/") if p]
             account_id = unquote(parts[2])
+
+            # Input validation & sanitization
+            if not account_id or len(account_id) > 64 or ".." in account_id or not re.match(r"^[A-Za-z0-9_\-\.\:\@]+$", account_id):
+                self._send_json(400, {
+                    "error": "INVALID_ACCOUNT_ID",
+                    "message": "Account ID must be between 1 and 64 characters and contain only alphanumeric, dash, dot, or underscore characters."
+                })
+                return
+
             history = self.get_db().get_account_transactions(account_id, limit=30)
             trail = []
             for h in history:
@@ -503,7 +539,16 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
         # 3. /api/quarantine/{id}/action
         if path.startswith("/api/quarantine/") and path.endswith("/action"):
             parts = [p for p in path.split("/") if p]
+            if len(parts) < 4:
+                self._send_json(400, {"error": "INVALID_PATH"})
+                return
             tx_id = unquote(parts[2])
+            if not tx_id or len(tx_id) > 128 or ".." in tx_id or not re.match(r"^[A-Za-z0-9_\-\.\:\@]+$", tx_id):
+                self._send_json(400, {"error": "Invalid transaction_id format"})
+                return
+            if len(str(body.get("notes") or "")) > 2000:
+                self._send_json(400, {"error": "Notes field exceeds maximum allowed length of 2000 characters"})
+                return
             qm = QuarantineManager(db_client=self.get_db())
             auth_token = (
                 body.get("api_key")
