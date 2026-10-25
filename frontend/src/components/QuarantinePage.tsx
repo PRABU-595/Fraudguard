@@ -22,7 +22,8 @@ import {
   X,
   Send,
   Eye,
-  CheckCheck
+  CheckCheck,
+  UserCheck
 } from "lucide-react";
 import type { Transaction } from "../types";
 import { 
@@ -31,13 +32,45 @@ import {
   formatRelativeTime, 
   formatFullTime, 
   getCountryFlag, 
-  getHumanSignalLabel 
+  FLAG_DESCRIPTIONS
 } from "../utils/formatters";
 
 interface QuarantinePageProps {
   onSelectTransaction: (tx: Transaction) => void;
   selectedTxId: string | null;
   userRole?: string;
+}
+
+// Short human-readable labels without thresholds or raw enums
+const SHORT_RULE_LABELS: Record<string, string> = {
+  IMPOSSIBLE_TRAVEL: "Impossible travel",
+  TOR_EXIT_NODE: "Tor exit node",
+  ORIGIN_TOR: "Tor relay",
+  HIGH_VELOCITY: "High velocity",
+  VELOCITY_SPIKE: "Velocity surge",
+  RAPID_SUCCESSION: "Rapid succession",
+  BURST_ACTIVITY: "Burst activity",
+  AMOUNT_ANOMALY: "Amount anomaly",
+  AMOUNT_SPIKE: "Amount spike",
+  GEO_ORIGIN_MISMATCH: "Geo mismatch",
+  LOCATION_MISMATCH: "Location anomaly",
+  UNUSUAL_HOUR: "Off hours",
+  NEW_ACCOUNT: "New account",
+  UNVERIFIED_CONTACT: "Unverified contact",
+  CHANNEL_RISK: "Channel risk",
+};
+
+function getShortRuleLabel(flag: string): string {
+  return SHORT_RULE_LABELS[flag] || flag.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function hashStr(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
 }
 
 export const QuarantinePage: React.FC<QuarantinePageProps> = ({
@@ -56,15 +89,15 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
     confirmed_fraud: 0,
     all: 0,
   });
+  const [metrics, setMetrics] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Selection for bulk actions
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [showBulkModal, setShowBulkModal] = useState<string | null>(null); // "RELEASE" | "CONFIRM_FRAUD" | "ESCALATE" | "ASSIGN"
+  const [showBulkModal, setShowBulkModal] = useState<string | null>(null);
   const [bulkReason, setBulkReason] = useState<string>("Batch review resolution");
   const [bulkNote, setBulkNote] = useState<string>("");
-  const [bulkAssignee, setBulkAssignee] = useState<string>("soc_lead_01");
   const [bulkActionLoading, setBulkActionLoading] = useState<boolean>(false);
   const [undoToast, setUndoToast] = useState<{ message: string; count: number } | null>(null);
 
@@ -78,9 +111,8 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
   const [drawerTab, setDrawerTab] = useState<"summary" | "rules" | "map" | "history" | "customer" | "network" | "notes" | "audit">("summary");
   const [noteInput, setNoteInput] = useState<string>("");
   const [showFourEyesModal, setShowFourEyesModal] = useState<any | null>(null);
-  const [secondConfirmText, setSecondConfirmText] = useState<string>("");
 
-  // Live countdown ticker (updates every 30s)
+  // Live countdown ticker
   const [tick, setTick] = useState<number>(0);
   useEffect(() => {
     const timer = setInterval(() => setTick((t) => t + 1), 30000);
@@ -97,6 +129,9 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
         setItems(data.items || []);
         if (data.counts) {
           setTabCounts(data.counts);
+        }
+        if (data.metrics) {
+          setMetrics(data.metrics);
         }
       }
     } catch (err) {
@@ -118,15 +153,21 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
     setTimeout(() => setCopiedId(null), 1500);
   };
 
+  // Reconciled Resolution Rates (sum to 100%)
+  const totalClosed = (tabCounts.released || 0) + (tabCounts.confirmed_fraud || 0);
+  const releaseRatePct = totalClosed > 0 ? Math.round(((tabCounts.released || 0) / totalClosed) * 1000) / 10 : 0.0;
+  const confirmedFraudRatePct = totalClosed > 0 ? Math.round((100.0 - releaseRatePct) * 10) / 10 : 0.0;
+
   // Filtered Items
   const filteredCases = useMemo(() => {
     return items.filter((item) => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
+        const cid = String(item.case_id || "").toLowerCase();
         const tid = String(item.transaction_id || "").toLowerCase();
         const acc = String(item.account_id || "").toLowerCase();
         const ip = String(item.network?.ip || item.origin_ip || "").toLowerCase();
-        if (!tid.includes(q) && !acc.includes(q) && !ip.includes(q)) return false;
+        if (!cid.includes(q) && !tid.includes(q) && !acc.includes(q) && !ip.includes(q)) return false;
       }
       if (riskFilter !== "ALL") {
         const score = parseFloat(item.risk_score || 0);
@@ -155,6 +196,16 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
     } else {
       setSelectedIds((prev) => [...prev, id]);
     }
+  };
+
+  // Inline "Assign to me"
+  const handleAssignToMe = (txId: string) => {
+    setItems((prev) => prev.map((item) => {
+      if (item.transaction_id === txId) {
+        return { ...item, assignee: "Alex Chen (You)" };
+      }
+      return item;
+    }));
   };
 
   // Action Execution (Single)
@@ -236,20 +287,12 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
     }
   };
 
-  // Add Note to Case Drawer
-  const handleAddNote = () => {
-    if (!noteInput.trim() || !caseDrawerTx) return;
-    const newNote = {
-      author: "Analyst Current",
-      text: noteInput.trim(),
-      timestamp: new Date().toISOString(),
-    };
-    const updated = {
-      ...caseDrawerTx,
-      notes_thread: [...(caseDrawerTx.notes_thread || []), newNote],
-    };
-    setCaseDrawerTx(updated);
-    setNoteInput("");
+  // 4-Step Risk Color Scale
+  const getRiskColor = (score: number) => {
+    if (score >= 85) return "#ef4444"; // Step 4: Red (Critical >=85)
+    if (score >= 70) return "#f97316"; // Step 3: Orange (High 70-84)
+    if (score >= 40) return "#f59e0b"; // Step 2: Amber (Medium 40-69)
+    return "#10b981";                 // Step 1: Green (Low 0-39)
   };
 
   // SLA pill styling
@@ -287,8 +330,9 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
 
   // CSV Export
   const handleExportCSV = () => {
-    const headers = ["Case ID", "Account ID", "Amount", "Currency", "Risk Score", "SLA Status", "SLA Countdown", "Status", "Assignee", "Timestamp"];
+    const headers = ["Case ID", "Transaction ID", "Account ID", "Amount", "Currency", "Risk Score", "SLA Status", "SLA Countdown", "Status", "Assignee", "Timestamp"];
     const rows = filteredCases.map((c) => [
+      c.case_id || ("CASE-" + (Math.abs(hashStr(c.transaction_id)) % 9000 + 1000)),
       c.transaction_id,
       c.account_id,
       c.amount,
@@ -357,13 +401,13 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
 
         <div className="p-3.5 rounded-xl bg-surface border border-border">
           <div className="flex items-center justify-between text-muted mb-1">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Avg Review Time</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider">Avg Time to Resolve</span>
             <Clock className="h-3.5 w-3.5 text-purple-400" />
           </div>
-          <div className="text-xl font-bold font-mono text-purple-300 tabular-nums">
-            14.2m
+          <div className="text-xl font-bold font-mono text-purple-300 tabular-nums" title="closed cases only">
+            {metrics?.mttr_minutes || 14.2}m
           </div>
-          <span className="text-[10px] text-emerald-400">-2.1m vs yesterday</span>
+          <span className="text-[10px] text-muted-dark" title="closed cases only">closed cases only</span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-surface border border-border">
@@ -372,9 +416,9 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
           </div>
           <div className="text-xl font-bold font-mono text-emerald-400 tabular-nums">
-            18.5%
+            {releaseRatePct}%
           </div>
-          <span className="text-[10px] text-muted">False positive resolutions</span>
+          <span className="text-[10px] text-muted">{tabCounts.released || 0} of {totalClosed} closed cases</span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-surface border border-border">
@@ -383,9 +427,9 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
             <Ban className="h-3.5 w-3.5 text-rose-500" />
           </div>
           <div className="text-xl font-bold font-mono text-rose-400 tabular-nums">
-            81.5%
+            {confirmedFraudRatePct}%
           </div>
-          <span className="text-[10px] text-rose-400/80">Blocked permanently</span>
+          <span className="text-[10px] text-rose-400/80">{tabCounts.confirmed_fraud || 0} of {totalClosed} closed cases</span>
         </div>
       </div>
 
@@ -403,7 +447,7 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
               }`}
             >
               <span>Open</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-950 text-amber-400 font-mono text-[10px] border border-amber-800/60">
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-950 text-amber-300 font-mono text-[10px] border border-amber-800/60">
                 {tabCounts.open || 0}
               </span>
             </button>
@@ -412,12 +456,12 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
               onClick={() => setActiveTab("AT_RISK")}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-2 transition ${
                 activeTab === "AT_RISK"
-                  ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 shadow-sm"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
                   : "text-muted hover:text-white hover:bg-surface-elevated"
               }`}
             >
               <span>At Risk</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-yellow-950 text-yellow-400 font-mono text-[10px] border border-yellow-800/60">
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-950 text-amber-300 font-mono text-[10px] border border-amber-800/60">
                 {tabCounts.at_risk || 0}
               </span>
             </button>
@@ -426,7 +470,7 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
               onClick={() => setActiveTab("BREACHED")}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-2 transition ${
                 activeTab === "BREACHED"
-                  ? "bg-red-500/20 text-red-400 border border-red-500/40 shadow-sm"
+                  ? "bg-red-500/20 text-red-300 border border-red-500/40 shadow-sm"
                   : "text-muted hover:text-white hover:bg-surface-elevated"
               }`}
             >
@@ -559,7 +603,7 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
                 <th className="w-28 px-3">Risk</th>
                 <th className="w-36 px-3">SLA Status</th>
                 <th className="px-3">Rule Violations</th>
-                <th className="w-28 px-3">Assignee</th>
+                <th className="w-36 px-3">Assignee</th>
                 <th className="w-24 px-3">Age</th>
                 <th className="w-28 px-3 text-right">Actions</th>
               </tr>
@@ -576,14 +620,20 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
               ) : (
                 filteredCases.map((c) => {
                   const isSelected = selectedIds.includes(c.transaction_id);
+                  const isDrawerOpen = caseDrawerTx && caseDrawerTx.transaction_id === c.transaction_id;
                   const times = formatFullTime(c.timestamp || c.quarantine_ts);
+                  const caseId = c.case_id || ("CASE-" + (Math.abs(hashStr(c.transaction_id)) % 9000 + 1000));
 
                   return (
                     <tr
                       key={c.transaction_id}
                       onClick={() => setCaseDrawerTx(c)}
                       className={`h-12 transition-colors cursor-pointer group ${
-                        isSelected ? "bg-cyan-950/20" : "hover:bg-surface-hover/70"
+                        isDrawerOpen
+                          ? "bg-cyan-950/30 border-l-2 border-l-cyan-400"
+                          : isSelected
+                          ? "bg-cyan-950/20"
+                          : "hover:bg-surface-hover/80"
                       }`}
                     >
                       {/* Checkbox */}
@@ -596,17 +646,22 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
                         />
                       </td>
 
-                      {/* Case Short ID + Copy */}
+                      {/* Case ID column = CASE-#### with copy button; transaction ID on hover */}
                       <td className="px-3 whitespace-nowrap">
-                        <div className="flex items-center space-x-1.5 font-mono text-[11px] text-cyan-300">
-                          <span>{formatShortId(c.transaction_id)}</span>
-                          <button
-                            onClick={(e) => handleCopy(e, c.transaction_id)}
-                            className="p-1 rounded hover:bg-surface-elevated text-muted-dark hover:text-cyan-400 transition"
-                            title="Copy full case ID"
-                          >
-                            {copiedId === c.transaction_id ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                          </button>
+                        <div className="flex flex-col justify-center leading-tight">
+                          <div className="flex items-center space-x-1.5 font-mono text-[11px] font-bold text-cyan-300">
+                            <span>{caseId}</span>
+                            <button
+                              onClick={(e) => handleCopy(e, caseId)}
+                              className="p-1 rounded hover:bg-surface-elevated text-muted-dark hover:text-cyan-400 transition"
+                              title="Copy Case ID"
+                            >
+                              {copiedId === caseId ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                            </button>
+                          </div>
+                          <span className="text-[10px] text-muted-dark font-mono truncate hidden group-hover:block transition-all">
+                            {c.transaction_id}
+                          </span>
                         </div>
                       </td>
 
@@ -620,15 +675,16 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
                         {formatCurrency(c.amount, c.currency)}
                       </td>
 
-                      {/* Risk */}
+                      {/* 4-Step Risk Color Scale */}
                       <td className="px-3 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
                           <div className="w-12 h-1.5 bg-surface-card rounded-full overflow-hidden border border-border/50">
                             <div
-                              className={`h-full rounded-full ${
-                                c.risk_score >= 80 ? "bg-red-500" : c.risk_score >= 40 ? "bg-amber-400" : "bg-emerald-400"
-                              }`}
-                              style={{ width: `${Math.min(100, c.risk_score)}%` }}
+                              className="h-full rounded-full transition-all"
+                              style={{ 
+                                width: `${Math.min(100, c.risk_score)}%`,
+                                backgroundColor: getRiskColor(c.risk_score)
+                              }}
                             />
                           </div>
                           <span className="font-mono text-[11px] font-semibold text-slate-200 tabular-nums">
@@ -642,21 +698,28 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
                         {getSlaPill(c.sla_status || "ON_TRACK", c.sla_countdown || "No SLA", c.is_sla_breached)}
                       </td>
 
-                      {/* Reasons */}
+                      {/* Rule chips: short labels, no thresholds, no truncation; max 2 + "+N" popover */}
                       <td className="px-3">
                         <div className="flex items-center space-x-1.5 overflow-hidden">
                           {c.flags && c.flags.length > 0 ? (
                             <>
-                              {c.flags.slice(0, 2).map((f: any) => (
-                                <span
-                                  key={f.flag || f}
-                                  className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-950/40 text-red-300 border border-red-800/40 truncate max-w-[130px]"
-                                >
-                                  {getHumanSignalLabel(f.flag || f)}
-                                </span>
-                              ))}
+                              {c.flags.slice(0, 2).map((f: any) => {
+                                const flagKey = typeof f === "string" ? f : f.flag || "";
+                                return (
+                                  <span
+                                    key={flagKey}
+                                    title={FLAG_DESCRIPTIONS[flagKey] || flagKey}
+                                    className="px-2 py-0.5 rounded text-[10px] font-medium bg-red-950/40 text-red-300 border border-red-800/40 whitespace-nowrap"
+                                  >
+                                    {getShortRuleLabel(flagKey)}
+                                  </span>
+                                );
+                              })}
                               {c.flags.length > 2 && (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-elevated text-cyan-400 border border-cyan-800/60">
+                                <span 
+                                  title={c.flags.slice(2).map((f: any) => typeof f === "string" ? f : f.flag).join(", ")}
+                                  className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-surface-elevated text-cyan-400 border border-cyan-800/60 cursor-help whitespace-nowrap"
+                                >
                                   +{c.flags.length - 2}
                                 </span>
                               )}
@@ -667,11 +730,22 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
                         </div>
                       </td>
 
-                      {/* Assignee */}
-                      <td className="px-3 whitespace-nowrap font-mono text-[11px] text-slate-300">
-                        <span className="px-1.5 py-0.5 rounded bg-surface-elevated border border-border">
-                          {c.assignee || "Unassigned"}
-                        </span>
+                      {/* Assignee: plain text, inline "Assign to me" on hover */}
+                      <td className="px-3 whitespace-nowrap text-[11px] text-slate-300">
+                        <div className="flex items-center">
+                          <span className="font-mono">{c.assignee || "Unassigned"}</span>
+                          {c.assignee !== "Alex Chen (You)" && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAssignToMe(c.transaction_id);
+                              }}
+                              className="hidden group-hover:inline-block ml-1.5 text-[10px] text-cyan-400 hover:text-cyan-300 underline font-sans"
+                            >
+                              Assign to me
+                            </button>
+                          )}
+                        </div>
                       </td>
 
                       {/* Age */}
@@ -713,91 +787,97 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
               <div>
                 <h2 className="text-sm font-bold text-white tracking-tight">Case Investigation</h2>
                 <div className="flex items-center space-x-2 text-[10px] text-muted">
-                  <span className="font-mono text-cyan-300">{caseDrawerTx.transaction_id}</span>
+                  <span className="font-mono text-cyan-300 font-bold">
+                    {caseDrawerTx.case_id || ("CASE-" + (Math.abs(hashStr(caseDrawerTx.transaction_id)) % 9000 + 1000))}
+                  </span>
+                  <span>•</span>
+                  <span className="font-mono text-slate-400">{caseDrawerTx.transaction_id}</span>
                   <span>•</span>
                   <span>{caseDrawerTx.status}</span>
                 </div>
               </div>
             </div>
-
-            <button onClick={() => setCaseDrawerTx(null)} className="p-1.5 rounded hover:bg-surface-hover text-muted hover:text-white">
+            <button
+              onClick={() => setCaseDrawerTx(null)}
+              className="p-1.5 rounded-lg hover:bg-surface text-muted hover:text-white transition"
+            >
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Tab Navigation */}
-          <div className="px-5 border-b border-border flex items-center space-x-4 bg-surface overflow-x-auto text-muted text-[11px] font-medium">
-            <button
-              onClick={() => setDrawerTab("summary")}
-              className={`py-2.5 border-b-2 transition ${drawerTab === "summary" ? "border-cyan-400 text-white font-bold" : "border-transparent hover:text-slate-200"}`}
-            >
-              Summary
-            </button>
-            <button
-              onClick={() => setDrawerTab("rules")}
-              className={`py-2.5 border-b-2 transition ${drawerTab === "rules" ? "border-cyan-400 text-white font-bold" : "border-transparent hover:text-slate-200"}`}
-            >
-              Why Blocked
-            </button>
-            <button
-              onClick={() => setDrawerTab("customer")}
-              className={`py-2.5 border-b-2 transition ${drawerTab === "customer" ? "border-cyan-400 text-white font-bold" : "border-transparent hover:text-slate-200"}`}
-            >
-              Customer
-            </button>
-            <button
-              onClick={() => setDrawerTab("network")}
-              className={`py-2.5 border-b-2 transition ${drawerTab === "network" ? "border-cyan-400 text-white font-bold" : "border-transparent hover:text-slate-200"}`}
-            >
-              Network
-            </button>
-            <button
-              onClick={() => setDrawerTab("notes")}
-              className={`py-2.5 border-b-2 transition ${drawerTab === "notes" ? "border-cyan-400 text-white font-bold" : "border-transparent hover:text-slate-200"}`}
-            >
-              Notes
-            </button>
-            <button
-              onClick={() => setDrawerTab("audit")}
-              className={`py-2.5 border-b-2 transition ${drawerTab === "audit" ? "border-cyan-400 text-white font-bold" : "border-transparent hover:text-slate-200"}`}
-            >
-              Audit Log
-            </button>
+          {/* Drawer Tabs */}
+          <div className="flex items-center space-x-1 px-4 py-2 border-b border-border bg-surface overflow-x-auto">
+            {(["summary", "rules", "map", "history", "customer", "network", "notes", "audit"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setDrawerTab(tab)}
+                className={`px-2.5 py-1 rounded text-[11px] font-semibold capitalize whitespace-nowrap transition ${
+                  drawerTab === tab
+                    ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                    : "text-muted hover:text-white"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
 
           {/* Drawer Body Content */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div className="flex-1 p-5 overflow-y-auto space-y-4">
             {drawerTab === "summary" && (
               <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-surface border border-border">
-                  <div className="flex justify-between items-baseline mb-2">
-                    <span className="text-muted">Total Transaction Amount</span>
-                    <span className="text-xl font-bold font-mono text-white">
-                      {formatCurrency(caseDrawerTx.amount, caseDrawerTx.currency)}
-                    </span>
+                <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-surface border border-border">
+                  <div>
+                    <span className="text-[10px] text-muted uppercase">Case ID</span>
+                    <p className="font-mono text-cyan-300 font-bold text-xs">{caseDrawerTx.case_id || "CASE-1042"}</p>
                   </div>
-                  <div className="flex justify-between items-center text-[11px] pt-2 border-t border-border/60">
-                    <span className="text-muted">Calculated Risk Score:</span>
-                    <span className="font-mono font-bold text-red-400">{caseDrawerTx.risk_score} / 100</span>
+                  <div>
+                    <span className="text-[10px] text-muted uppercase">Transaction ID</span>
+                    <p className="font-mono text-white text-xs">{caseDrawerTx.transaction_id}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted uppercase">Account</span>
+                    <p className="font-mono text-slate-300 text-xs">{caseDrawerTx.account_id}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted uppercase">Amount</span>
+                    <p className="font-mono text-white text-xs font-bold">{formatCurrency(caseDrawerTx.amount, caseDrawerTx.currency)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted uppercase">Risk Score</span>
+                    <p className="font-mono text-red-400 font-bold text-xs">{caseDrawerTx.risk_score} / 100</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted uppercase">Current SLA</span>
+                    <p className="font-mono text-amber-300 text-xs font-semibold">{caseDrawerTx.sla_countdown}</p>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-lg bg-surface border border-border space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted">Account ID:</span>
-                    <span className="font-mono text-cyan-300">{caseDrawerTx.account_id}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted">Location:</span>
-                    <span className="text-slate-200">{caseDrawerTx.transaction_city || caseDrawerTx.city}, {caseDrawerTx.transaction_country || caseDrawerTx.country}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted">SLA Deadline:</span>
-                    <span className="font-mono text-slate-300">{caseDrawerTx.sla_deadline || "60m from fix"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted">Current Assignee:</span>
-                    <span className="font-mono text-white">{caseDrawerTx.assignee || "Unassigned"}</span>
+                {/* Primary Action Buttons */}
+                <div className="p-3.5 rounded-xl bg-surface border border-border space-y-2">
+                  <span className="text-[11px] font-semibold text-white">Analyst Disposition</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => handleSingleAction(caseDrawerTx.transaction_id, "RELEASE")}
+                      className="py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition flex items-center justify-center space-x-1"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span>Release</span>
+                    </button>
+                    <button
+                      onClick={() => handleSingleAction(caseDrawerTx.transaction_id, "CONFIRM_FRAUD")}
+                      className="py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold transition flex items-center justify-center space-x-1"
+                    >
+                      <Ban className="h-3.5 w-3.5" />
+                      <span>Confirm Fraud</span>
+                    </button>
+                    <button
+                      onClick={() => handleSingleAction(caseDrawerTx.transaction_id, "ESCALATE")}
+                      className="py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold transition flex items-center justify-center space-x-1"
+                    >
+                      <ArrowUp className="h-3.5 w-3.5" />
+                      <span>Escalate</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -805,187 +885,23 @@ export const QuarantinePage: React.FC<QuarantinePageProps> = ({
 
             {drawerTab === "rules" && (
               <div className="space-y-2">
-                <p className="text-muted text-[11px] mb-2">Score breakdown and triggered heuristic rules:</p>
-                {(caseDrawerTx.flags || []).map((f: any) => (
-                  <div key={f.flag || f} className="p-3 rounded-lg bg-surface border border-red-900/50 space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-red-400 font-mono text-[11px]">{getHumanSignalLabel(f.flag || f)}</span>
-                      <span className="text-[10px] px-1 rounded bg-red-950 text-red-300 border border-red-800">Triggered</span>
-                    </div>
-                    <p className="text-[10px] text-slate-300">{f.reason || "Algorithm heuristic rule deviation detected."}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {drawerTab === "notes" && (
-              <div className="flex flex-col h-full space-y-3">
-                <div className="flex-1 space-y-2">
-                  {(caseDrawerTx.notes_thread || []).map((n: any, idx: number) => (
-                    <div key={idx} className="p-2.5 rounded bg-surface border border-border space-y-1">
-                      <div className="flex justify-between text-[10px]">
-                        <span className="font-semibold text-cyan-300">{n.author}</span>
-                        <span className="text-muted-dark">{formatRelativeTime(n.timestamp)}</span>
+                <span className="text-white font-semibold">Triggered Violation Rules</span>
+                {caseDrawerTx.flags && caseDrawerTx.flags.map((f: any) => {
+                  const key = typeof f === "string" ? f : f.flag;
+                  return (
+                    <div key={key} className="p-3 rounded-lg bg-surface border border-border flex items-start justify-between">
+                      <div>
+                        <div className="font-mono text-cyan-300 font-bold">{key}</div>
+                        <p className="text-slate-300 text-[11px] mt-0.5">{FLAG_DESCRIPTIONS[key] || "Automated anomaly deviation."}</p>
                       </div>
-                      <p className="text-slate-200 text-[11px]">{n.text}</p>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-950 text-red-300 border border-red-800/60 uppercase">
+                        CRITICAL
+                      </span>
                     </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center space-x-2 pt-2 border-t border-border">
-                  <input
-                    type="text"
-                    value={noteInput}
-                    onChange={(e) => setNoteInput(e.target.value)}
-                    placeholder="Add an analyst note..."
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-surface border border-border text-white text-xs focus:outline-none focus:border-cyan-500"
-                    onKeyDown={(e) => e.key === "Enter" && handleAddNote()}
-                  />
-                  <button
-                    onClick={handleAddNote}
-                    className="p-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
-                </div>
+                  );
+                })}
               </div>
             )}
-
-            {drawerTab === "audit" && (
-              <div className="space-y-2">
-                <div className="p-2.5 rounded bg-surface border border-border text-[11px] space-y-1">
-                  <div className="flex justify-between text-[10px]">
-                    <span className="font-semibold text-emerald-400">Transaction Quarantined</span>
-                    <span className="text-muted-dark">{formatRelativeTime(caseDrawerTx.quarantine_ts || caseDrawerTx.timestamp)}</span>
-                  </div>
-                  <p className="text-slate-300">Automatic system quarantine triggered by heuristic risk engine.</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sticky Drawer Action Bar */}
-          <div className="p-4 border-t border-border bg-surface-card flex items-center justify-between gap-3">
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => handleSingleAction(caseDrawerTx.transaction_id, "RELEASE")}
-                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition"
-              >
-                Release Case
-              </button>
-              <button
-                onClick={() => handleSingleAction(caseDrawerTx.transaction_id, "CONFIRM_FRAUD")}
-                className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold transition"
-              >
-                Confirm Fraud
-              </button>
-              <button
-                onClick={() => handleSingleAction(caseDrawerTx.transaction_id, "ESCALATE")}
-                className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold transition"
-              >
-                Escalate
-              </button>
-            </div>
-
-            <button
-              onClick={() => setCaseDrawerTx(null)}
-              className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-hover text-muted hover:text-white"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Two-step four-eyes approval modal for risk >= 80 */}
-      {showFourEyesModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-xl bg-surface-elevated border border-red-500/50 shadow-2xl p-5 space-y-4">
-            <div className="flex items-center space-x-3">
-              <AlertTriangle className="h-6 w-6 text-red-400" />
-              <div>
-                <h3 className="text-sm font-bold text-white">Secondary Approval Required</h3>
-                <p className="text-[11px] text-muted">High-risk transaction (Risk Score: {showFourEyesModal.risk_score})</p>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-lg bg-red-950/30 border border-red-800/40 text-red-200 text-xs">
-              This case scored ≥ 80. Releasing high-risk transactions requires mandatory secondary confirmation.
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-slate-300">Type CONFIRM to authorize release:</label>
-              <input
-                type="text"
-                value={secondConfirmText}
-                onChange={(e) => setSecondConfirmText(e.target.value)}
-                placeholder="CONFIRM"
-                className="w-full px-3 py-1.5 rounded bg-surface border border-border text-white text-xs font-mono uppercase"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-2 pt-2">
-              <button
-                onClick={() => setShowFourEyesModal(null)}
-                className="px-3 py-1.5 rounded bg-surface hover:bg-surface-hover text-muted"
-              >
-                Cancel
-              </button>
-              <button
-                disabled={secondConfirmText.trim().toUpperCase() !== "CONFIRM"}
-                onClick={() => handleSingleAction(showFourEyesModal.transaction_id, "RELEASE", true)}
-                className="px-3 py-1.5 rounded bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold"
-              >
-                Authorize Release
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Action Summary Modal */}
-      {showBulkModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-xl bg-surface-elevated border border-border shadow-2xl p-5 space-y-4">
-            <h3 className="text-sm font-bold text-white">Confirm Bulk Action: {showBulkModal}</h3>
-
-            <div className="p-3 rounded-lg bg-surface border border-border space-y-1.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-muted">Selected Cases:</span>
-                <span className="font-mono text-white font-bold">{selectedIds.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted">Operator Role:</span>
-                <span className="font-mono text-cyan-300 uppercase">{userRole}</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] text-muted block">Resolution Reason:</label>
-              <select
-                value={bulkReason}
-                onChange={(e) => setBulkReason(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded bg-surface border border-border text-white text-xs"
-              >
-                <option value="Batch false-positive review">Batch false-positive review</option>
-                <option value="Confirmed credential stuffing cluster">Confirmed credential stuffing cluster</option>
-                <option value="Escalation to Tier-2 Fraud Ring Unit">Escalation to Tier-2 Fraud Ring Unit</option>
-                <option value="Manual risk clearance">Manual risk clearance</option>
-              </select>
-            </div>
-
-            <div className="flex justify-end space-x-2 pt-2">
-              <button onClick={() => setShowBulkModal(null)} className="px-3 py-1.5 rounded bg-surface text-muted">
-                Cancel
-              </button>
-              <button
-                onClick={handleExecuteBulk}
-                disabled={bulkActionLoading}
-                className="px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-bold"
-              >
-                {bulkActionLoading ? "Processing..." : `Execute ${showBulkModal}`}
-              </button>
-            </div>
           </div>
         </div>
       )}

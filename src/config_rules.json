@@ -1,6 +1,6 @@
 {
   "thresholds": {
-    "block_score": 82,
+    "block_score": 80,
     "review_score": 40,
     "force_block_min_score": 85
   },

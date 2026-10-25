@@ -63,6 +63,7 @@ export interface Transaction {
   merchant_category: string;
   channel: "POS" | "ONLINE_WEB" | "MOBILE_APP" | "WIRE" | string;
   tower: CellTower;
+  cell_tower?: CellTower;
   flags: RiskFlag[];
   network?: NetworkTelemetry;
   device?: DeviceTelemetry;
@@ -87,4 +88,5 @@ export interface SystemStats {
   sparkline_30m: number[];
   delta_vs_previous_hour_pct: number;
   uptime_seconds?: number;
+  environment?: string;
 }

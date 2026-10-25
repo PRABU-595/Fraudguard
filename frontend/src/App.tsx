@@ -284,6 +284,7 @@ export const App: React.FC = () => {
         onToggleSimulator={handleToggleSimulator}
         userRole={userRole}
         setUserRole={setUserRole}
+        environment={stats?.environment || "Demo"}
       />
 
       {/* Main View Container */}
@@ -345,7 +346,13 @@ export const App: React.FC = () => {
         )}
 
         {activeTab === "config" && (
-          <RulesConfigPage userRole={userRole} />
+          <RulesConfigPage 
+            userRole={userRole} 
+            onNavigateToLiveFeed={(filter) => {
+              setActiveFilter(filter);
+              setActiveTab("ingestion");
+            }}
+          />
         )}
       </main>
 

@@ -99,3 +99,8 @@
 .pulse-ring {
   animation: ringPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Dark Basemap CSS filter for standard OpenStreetMap tiles */
+.soc-dark-tile-filter {
+  filter: invert(100%) hue-rotate(180deg) brightness(90%) contrast(95%) saturate(70%);
+}

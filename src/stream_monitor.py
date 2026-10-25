@@ -43,6 +43,25 @@ MAIN_LOG_FILE = os.path.join(ROOT_DIR, "data", "audit_log.json")
 QUARANTINE_LOG_FILE = os.path.join(ROOT_DIR, "data", "quarantine_log.json")
 START_TIME = time.time()
 
+def load_dotenv_simple(env_path: str) -> None:
+    if not os.path.exists(env_path):
+        return
+    try:
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip()
+                v = v.strip().strip('"').strip("'")
+                if k not in os.environ:
+                    os.environ[k] = v
+    except Exception:
+        pass
+
+load_dotenv_simple(os.path.join(ROOT_DIR, ".env"))
+
 
 def _safe_int(val: Any, default: int, min_val: Optional[int] = None, max_val: Optional[int] = None) -> int:
     try:
@@ -763,6 +782,16 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, enriched)
             return
 
+        # 6D. REST API: /api/map/config
+        if path == "/api/map/config":
+            self._send_json(200, {
+                "tile_url": os.environ.get("MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
+                "tile_attribution": os.environ.get("MAP_TILE_ATTRIBUTION", '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'),
+                "api_key": os.environ.get("MAP_API_KEY", ""),
+                "environment": os.environ.get("ENVIRONMENT", "Demo")
+            })
+            return
+
         # 7. REST API: /api/quarantine
         if path == "/api/quarantine":
             from src.tower_geo_helper import enrich_map_transaction
@@ -777,6 +806,8 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                 e["sla_status"] = item.get("sla_status", "ON_TRACK")
                 e["sla_due_at"] = item.get("sla_due_at")
                 e["sla_deadline"] = item.get("sla_deadline")
+                e["sla_remaining_minutes"] = item.get("sla_remaining_minutes")
+                e["sla_remaining_seconds"] = item.get("sla_remaining_seconds")
                 e["is_sla_breached"] = item.get("is_sla_breached", False)
                 e["priority"] = "CRITICAL" if e.get("risk_score", 0) >= 80 else ("HIGH" if e.get("risk_score", 0) >= 60 else "MEDIUM")
                 e["notes_thread"] = item.get("notes_thread") or [
@@ -818,6 +849,12 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                     or s_lower in str(q.get("network", {}).get("ip", "")).lower()
                 ]
 
+            from src.metrics_calculator import compute_quarantine_metrics
+            quar_metrics = compute_quarantine_metrics(enriched_feed)
+            for idx, q_item in enumerate(enriched_feed, start=1001):
+                if not q_item.get("case_id"):
+                    q_item["case_id"] = f"CASE-{idx:04d}"
+
             self._send_json(200, {
                 "tab": tab_filter,
                 "counts": {
@@ -829,6 +866,7 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                     "confirmed_fraud": confirmed_count,
                     "all": len(enriched_feed)
                 },
+                "metrics": quar_metrics,
                 "total_count": len(filtered),
                 "items": filtered
             })
@@ -968,7 +1006,6 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
         # 0B. /api/config (Governed Configuration Mutation - Admin Only)
         if path == "/api/config":
             from src.config_manager import save_config_version, validate_config
-            from src.quarantine_manager import QuarantineManager
             qm = QuarantineManager(db_client=self.get_db())
             auth_token = body.get("auth_token") or self.headers.get("X-API-Key")
             is_auth, auth_user, role = qm.verify_auth(auth_token, dict(self.headers))
@@ -996,7 +1033,6 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
         # 0C. /api/config/restore (Version Rollback - Admin Only)
         if path == "/api/config/restore":
             from src.config_manager import save_config_version, get_version_history
-            from src.quarantine_manager import QuarantineManager
             qm = QuarantineManager(db_client=self.get_db())
             auth_token = body.get("auth_token") or self.headers.get("X-API-Key")
             is_auth, auth_user, role = qm.verify_auth(auth_token, dict(self.headers))

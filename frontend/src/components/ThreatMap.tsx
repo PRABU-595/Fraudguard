@@ -1,16 +1,28 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import "leaflet.heat";
 import { 
   MapPin, 
   Radio, 
   Navigation, 
   RefreshCw, 
   Search,
-  Compass
+  Compass,
+  Play,
+  Pause,
+  Layers,
+  Flame,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Info
 } from "lucide-react";
 import type { Transaction } from "../types";
-import { formatCurrency } from "../utils/formatters";
+import { formatCurrency, formatShortId } from "../utils/formatters";
 
 interface ThreatMapProps {
   transactions: Transaction[];
@@ -28,10 +40,19 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
 
-  // Layer groups refs
-  const txMarkersLayerRef = useRef<L.LayerGroup>(L.layerGroup());
+  // Layers & Clusters
+  const clusterGroupRef = useRef<any>(null);
   const cellTowersLayerRef = useRef<L.LayerGroup>(L.layerGroup());
   const travelPathsLayerRef = useRef<L.LayerGroup>(L.layerGroup());
+  const heatLayerRef = useRef<any>(null);
+  const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
+
+  // Tile Config & Error States
+  const [tileError, setTileError] = useState<boolean>(false);
+  const [tileConfig, setTileConfig] = useState<{ url: string; attribution: string }>({
+    url: (import.meta as any).env?.VITE_MAP_TILE_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: (import.meta as any).env?.VITE_MAP_TILE_ATTRIBUTION || '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  });
 
   // Filter States
   const [riskFilter, setRiskFilter] = useState<string>("ALL");
@@ -42,17 +63,39 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
   const [autoFlyTo, setAutoFlyTo] = useState<boolean>(false);
 
   // Layer Visibility Toggles
-  const [showTransactions, setShowTransactions] = useState<boolean>(true);
   const [showCellTowers, setShowCellTowers] = useState<boolean>(true);
-  const [showTravelPaths, setShowTravelPaths] = useState<boolean>(true);
+  const [showHeatmap, setShowHeatmap] = useState<boolean>(false);
+  const [showLegend, setShowLegend] = useState<boolean>(true);
+
+  // Time Slider & Playback
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [playbackIndex, setPlaybackIndex] = useState<number>(100);
+
+  // Hovered account for travel path
+  const [hoveredAccountId, setHoveredAccountId] = useState<string | null>(null);
+
+  // Fetch tile config from backend API
+  useEffect(() => {
+    fetch("/api/map/config")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data && data.tile_url) {
+          setTileConfig({
+            url: data.tile_url,
+            attribution: data.tile_attribution || '&copy; OpenStreetMap contributors'
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Filter transactions
   const filteredTransactions = useMemo(() => {
-    return transactions.filter((t) => {
+    let result = transactions.filter((t) => {
       if (blockedOnly && t.decision !== "BLOCK" && t.status !== "QUARANTINED") return false;
       if (riskFilter !== "ALL") {
         if (riskFilter === "BLOCK" && t.decision !== "BLOCK") return false;
-        if (riskFilter === "REVIEW" && t.decision !== "REVIEW_QUEUE") return false;
+        if (riskFilter === "REVIEW" && t.decision !== "REVIEW_QUEUE" && t.decision !== "REVIEW") return false;
         if (riskFilter === "ALLOW" && t.decision !== "ALLOW") return false;
       }
       if (countryFilter !== "ALL" && t.country.toUpperCase() !== countryFilter.toUpperCase()) return false;
@@ -60,7 +103,15 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
       if (accountSearch && !t.account_id.toLowerCase().includes(accountSearch.toLowerCase())) return false;
       return true;
     });
-  }, [transactions, riskFilter, countryFilter, channelFilter, accountSearch, blockedOnly]);
+
+    // Time slider cutoff
+    if (result.length > 0 && playbackIndex < 100) {
+      const maxCount = Math.max(1, Math.floor((result.length * playbackIndex) / 100));
+      result = result.slice(0, maxCount);
+    }
+
+    return result;
+  }, [transactions, riskFilter, countryFilter, channelFilter, accountSearch, blockedOnly, playbackIndex]);
 
   // Unique country list for filter
   const countries = useMemo(() => {
@@ -69,12 +120,20 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
     return Array.from(set).sort();
   }, [transactions]);
 
+  // Selected account ID
+  const selectedAccount = useMemo(() => {
+    if (hoveredAccountId) return hoveredAccountId;
+    if (!selectedTxId) return null;
+    const tx = transactions.find((t) => t.transaction_id === selectedTxId);
+    return tx ? tx.account_id : null;
+  }, [selectedTxId, hoveredAccountId, transactions]);
+
   // Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    if (mapRef.current) return; // already initialized
+    if (mapRef.current) return;
 
-    // Create Leaflet instance centered at global view
+    // Create Leaflet instance
     const map = L.map(mapContainerRef.current, {
       center: [25.0, 10.0],
       zoom: 3,
@@ -82,23 +141,80 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
       maxZoom: 18,
       zoomControl: false,
     });
+    mapRef.current = map;
 
-    // Zoom control at bottom right
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    // CartoDB Dark Matter Tiles (High quality SOC dark basemap)
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      subdomains: "abcd",
+    // Create custom pane for cell towers under markerPane (zIndex 350)
+    map.createPane("towersPane");
+    const towersPane = map.getPane("towersPane");
+    if (towersPane) {
+      towersPane.style.zIndex = "350";
+    }
+
+    // Load fallback country outlines GeoJSON
+    fetch("/world_countries.json")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data && mapRef.current) {
+          geoJsonLayerRef.current = L.geoJSON(data, {
+            style: {
+              fillColor: "#0f172a",
+              weight: 1,
+              color: "#334155",
+              fillOpacity: 0.6,
+            }
+          }).addTo(mapRef.current);
+        }
+      })
+      .catch(() => {});
+
+    // Add Tile Layer with CSS dark filter
+    const tileLayer = L.tileLayer(tileConfig.url, {
+      attribution: tileConfig.attribution,
       maxZoom: 19,
-    }).addTo(map);
+      className: "soc-dark-tile-filter",
+    });
 
-    // Add layer groups to map
-    txMarkersLayerRef.current.addTo(map);
-    cellTowersLayerRef.current.addTo(map);
-    travelPathsLayerRef.current.addTo(map);
+    tileLayer.on("tileerror", () => {
+      setTileError(true);
+    });
 
-    mapRef.current = map;
+    tileLayer.addTo(map);
+
+    // Initialize marker cluster group with canvas renderer and worst-decision coloring
+    const clusterGroup = (L as any).markerClusterGroup({
+      chunkedLoading: true,
+      maxClusterRadius: 50,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      iconCreateFunction: (cluster: any) => {
+        const markers = cluster.getAllChildMarkers();
+        let worst = "ALLOW";
+        for (const m of markers) {
+          const dec = m.options.decision;
+          if (dec === "BLOCK") {
+            worst = "BLOCK";
+            break;
+          }
+          if (dec === "REVIEW_QUEUE" || dec === "REVIEW") {
+            worst = "REVIEW";
+          }
+        }
+        const color = worst === "BLOCK" ? "#ef4444" : worst === "REVIEW" ? "#f59e0b" : "#10b981";
+        return L.divIcon({
+          html: `<div style="background:${color}dd; border: 2px solid ${color}; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; box-shadow: 0 0 10px ${color}88;">${markers.length}</div>`,
+          className: "custom-cluster-icon",
+          iconSize: [34, 34],
+        });
+      }
+    });
+
+    clusterGroupRef.current = clusterGroup;
+    map.addLayer(clusterGroup);
+    map.addLayer(cellTowersLayerRef.current);
+    map.addLayer(travelPathsLayerRef.current);
 
     return () => {
       map.remove();
@@ -106,204 +222,254 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
     };
   }, []);
 
-  // Update Layers & Markers when filtered transactions change
+  // Update Markers & Clusters when filtered transactions change
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
+    if (!mapRef.current || !clusterGroupRef.current) return;
 
-    // Clear previous items
-    txMarkersLayerRef.current.clearLayers();
+    clusterGroupRef.current.clearLayers();
     cellTowersLayerRef.current.clearLayers();
+
+    const canvasRenderer = L.canvas();
+    const newMarkers: L.CircleMarker[] = [];
+
+    // Distinct purple cell tower SVG icon
+    const towerIcon = L.divIcon({
+      className: "cell-tower-custom-icon",
+      html: `<div style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:4px;background:#581c87;border:1.5px solid #a855f7;box-shadow:0 0 8px rgba(168,85,247,0.6);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f3e8ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M7 7l5-5 5 5M4 14h16M2 22h20M9 18l3-3 3 3"/></svg></div>`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+    });
+
+    filteredTransactions.forEach((tx) => {
+      const isBlock = tx.decision === "BLOCK" || tx.status === "QUARANTINED";
+      const isReview = tx.decision === "REVIEW_QUEUE" || tx.decision === "REVIEW";
+      const color = isBlock ? "#ef4444" : isReview ? "#f59e0b" : "#10b981";
+      const radius = Math.max(6, Math.min(18, 6 + Math.log10(Math.max(1, tx.amount)) * 3));
+
+      // Transaction Circle Marker
+      const marker = L.circleMarker([tx.lat, tx.lon], {
+        radius,
+        fillColor: color,
+        color: tx.transaction_id === selectedTxId ? "#ffffff" : color,
+        weight: tx.transaction_id === selectedTxId ? 3 : 1.5,
+        opacity: 1,
+        fillOpacity: 0.85,
+        renderer: canvasRenderer,
+      } as any);
+
+      (marker as any).options.decision = isBlock ? "BLOCK" : isReview ? "REVIEW" : "ALLOW";
+
+      // Popup
+      marker.bindTooltip(`
+        <div style="font-family:monospace; font-size:11px;">
+          <b>${tx.transaction_id}</b><br/>
+          Amount: ${formatCurrency(tx.amount, tx.currency)}<br/>
+          Risk: ${Math.round(tx.risk_score)} (${tx.decision})<br/>
+          Location: ${tx.city}, ${tx.country}
+        </div>
+      `, { direction: "top", offset: [0, -10] });
+
+      marker.on("click", () => {
+        onSelectTransaction(tx);
+      });
+
+      marker.on("mouseover", () => {
+        setHoveredAccountId(tx.account_id);
+      });
+
+      marker.on("mouseout", () => {
+        setHoveredAccountId(null);
+      });
+
+      newMarkers.push(marker);
+
+      // Distinct Purple Cell Tower (drawn on custom towersPane with lower zIndex under markers)
+      if (showCellTowers && tx.cell_tower) {
+        const ct = tx.cell_tower;
+        const towerMarker = L.marker([ct.lat, ct.lon], {
+          icon: towerIcon,
+          pane: "towersPane"
+        });
+
+        towerMarker.bindTooltip(`
+          <div style="font-family:monospace; font-size:11px;">
+            <b>Cell Tower: ${ct.tower_id}</b><br/>
+            Carrier: ${ct.carrier || "TeleCom"}<br/>
+            Accuracy: ${ct.accuracy_meters || 450}m
+          </div>
+        `, { direction: "top" });
+
+        // Dashed connector line from cell tower to transaction
+        const connector = L.polyline([[ct.lat, ct.lon], [tx.lat, tx.lon]], {
+          color: "#a855f7",
+          weight: 1.5,
+          dashArray: "4, 4",
+          opacity: 0.7,
+          pane: "towersPane"
+        });
+
+        // Tower accuracy circle
+        const accuracyCircle = L.circle([ct.lat, ct.lon], {
+          radius: ct.accuracy_meters || 450,
+          color: "#9333ea",
+          weight: 1,
+          fillColor: "#a855f7",
+          fillOpacity: 0.12,
+          pane: "towersPane"
+        });
+
+        cellTowersLayerRef.current.addLayer(towerMarker);
+        cellTowersLayerRef.current.addLayer(connector);
+        cellTowersLayerRef.current.addLayer(accuracyCircle);
+      }
+    });
+
+    clusterGroupRef.current.addLayers(newMarkers);
+
+    // Auto-fit bounds on load or filter change
+    if (newMarkers.length > 0 && mapRef.current) {
+      const bounds = L.latLngBounds(newMarkers.map((m) => m.getLatLng()));
+      mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+    }
+  }, [filteredTransactions, showCellTowers, selectedTxId]);
+
+  // Update Travel Paths ONLY for the selected account (or hovered account)
+  useEffect(() => {
+    if (!mapRef.current) return;
     travelPathsLayerRef.current.clearLayers();
 
-    const bounds = L.latLngBounds([]);
+    if (!selectedAccount) return;
 
-    // 1. Plot Transaction Markers
-    if (showTransactions) {
-      filteredTransactions.forEach((tx) => {
-        if (!tx.lat || !tx.lon) return;
-        const latLng = L.latLng(tx.lat, tx.lon);
-        bounds.extend(latLng);
+    // Filter transactions belonging to this account and sort chronologically
+    const accountTxs = transactions
+      .filter((t) => t.account_id === selectedAccount)
+      .sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
 
-        const isBlock = tx.decision === "BLOCK" || tx.status === "QUARANTINED";
-        const isReview = tx.decision === "REVIEW_QUEUE";
-        const color = isBlock ? "#ef4444" : isReview ? "#f59e0b" : "#10b981";
-        const isLatest = latestTxId === tx.transaction_id;
-        const isSelected = selectedTxId === tx.transaction_id;
+    if (accountTxs.length < 2) return;
 
-        // Create interactive pulse marker
-        const marker = L.circleMarker(latLng, {
-          radius: isSelected ? 9 : isLatest ? 8 : 6,
-          fillColor: color,
-          color: isSelected ? "#ffffff" : isLatest ? "#38bdf8" : "#080c14",
-          weight: isSelected ? 3 : isLatest ? 2.5 : 1.5,
-          opacity: 1,
-          fillOpacity: 0.85,
-        });
+    for (let i = 0; i < accountTxs.length - 1; i++) {
+      const t1 = accountTxs[i];
+      const t2 = accountTxs[i + 1];
 
-        // Hover tooltip
-        marker.bindTooltip(
-          `<div class="text-xs p-1">
-            <div class="font-bold flex items-center justify-between gap-2">
-              <span class="text-cyan-400 font-mono">${tx.transaction_id.slice(0, 10)}</span>
-              <span class="font-bold" style="color: ${color}">${tx.decision}</span>
-            </div>
-            <div class="text-[11px] text-slate-300 mt-0.5">${tx.city}, ${tx.country}</div>
-            <div class="text-white font-mono font-medium">${formatCurrency(tx.amount, tx.currency)}</div>
-          </div>`,
-          { direction: "top", offset: [0, -6], opacity: 0.95 }
-        );
+      // Haversine distance
+      const lat1 = t1.lat * (Math.PI / 180);
+      const lon1 = t1.lon * (Math.PI / 180);
+      const lat2 = t2.lat * (Math.PI / 180);
+      const lon2 = t2.lon * (Math.PI / 180);
+      const dlat = lat2 - lat1;
+      const dlon = lon2 - lon1;
+      const a = Math.sin(dlat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dlon / 2) ** 2;
+      const d_km = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-        marker.on("click", () => {
-          onSelectTransaction(tx);
-        });
+      // Time gap
+      const d1 = new Date(t1.timestamp || "");
+      const d2 = new Date(t2.timestamp || "");
+      const minutes = Math.max(1, (d2.getTime() - d1.getTime()) / (1000 * 60));
+      const speed = d_km / (minutes / 60);
 
-        txMarkersLayerRef.current.addLayer(marker);
+      const isImpossible = speed > 900;
 
-        // 2. Plot Cell Tower if active
-        if (showCellTowers && tx.tower && tx.tower.lat && tx.tower.lon) {
-          const towerLatLng = L.latLng(tx.tower.lat, tx.tower.lon);
-
-          // Purple tower pin marker
-          const towerMarker = L.circleMarker(towerLatLng, {
-            radius: 4.5,
-            fillColor: "#a855f7",
-            color: "#d8b4fe",
-            weight: 1.5,
-            opacity: 0.9,
-            fillOpacity: 0.85,
-          });
-
-          towerMarker.bindTooltip(
-            `<div class="text-xs p-1">
-              <div class="text-purple-300 font-bold font-mono">📡 Cell Tower ${tx.tower.tower_id}</div>
-              <div class="text-slate-200">${tx.tower.carrier}</div>
-              <div class="text-[10px] text-muted">Dist: ${tx.tower.distance_meters}m • Accuracy: ${tx.tower.accuracy_meters}m</div>
-            </div>`,
-            { direction: "top", offset: [0, -4] }
-          );
-
-          towerMarker.on("click", () => onSelectTransaction(tx));
-          cellTowersLayerRef.current.addLayer(towerMarker);
-
-          // Accuracy radius circle around tower
-          const accuracyCircle = L.circle(towerLatLng, {
-            radius: Math.max(30, tx.tower.accuracy_meters || 50),
-            color: "#a855f7",
-            weight: 1,
-            dashArray: "2, 4",
-            fillColor: "#a855f7",
-            fillOpacity: 0.08,
-          });
-          cellTowersLayerRef.current.addLayer(accuracyCircle);
-
-          // Dashed line from tower to transaction coordinate fix
-          const towerLine = L.polyline([towerLatLng, latLng], {
-            color: "#c084fc",
-            weight: 1.25,
-            dashArray: "3, 6",
-            opacity: 0.65,
-          });
-          cellTowersLayerRef.current.addLayer(towerLine);
-        }
-      });
-    }
-
-    // 3. Plot Consecutive Travel Paths per Account
-    if (showTravelPaths) {
-      // Group transactions by account
-      const byAccount: Record<string, Transaction[]> = {};
-      filteredTransactions.forEach((tx) => {
-        if (!byAccount[tx.account_id]) byAccount[tx.account_id] = [];
-        byAccount[tx.account_id].push(tx);
+      // Draw polyline
+      const line = L.polyline([[t1.lat, t1.lon], [t2.lat, t2.lon]], {
+        color: isImpossible ? "#ef4444" : "#64748b",
+        weight: isImpossible ? 3 : 2,
+        dashArray: isImpossible ? "6, 6" : undefined,
+        className: isImpossible ? "animate-pulse" : undefined,
       });
 
-      Object.entries(byAccount).forEach(([accountId, accountTxs]) => {
-        if (accountTxs.length < 2) return;
-        // Sort chronologically ascending
-        accountTxs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      // Midpoint marker with label & arrowhead
+      const midLat = (t1.lat + t2.lat) / 2;
+      const midLon = (t1.lon + t2.lon) / 2;
 
-        for (let i = 0; i < accountTxs.length - 1; i++) {
-          const t1 = accountTxs[i];
-          const t2 = accountTxs[i + 1];
-          if (!t1.lat || !t1.lon || !t2.lat || !t2.lon) continue;
+      const labelHtml = isImpossible
+        ? `<div class="px-2 py-0.5 rounded bg-red-950 border border-red-500 text-red-200 text-[10px] font-mono font-bold shadow-lg flex items-center space-x-1 whitespace-nowrap">
+            <span>🚨 IMPOSSIBLE TRAVEL: ${Math.round(d_km)}km · ${Math.round(minutes)}m · ${Math.round(speed)}km/h</span>
+          </div>`
+        : `<div class="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300 text-[10px] font-mono shadow-md whitespace-nowrap">
+            <span>${Math.round(d_km)}km · ${Math.round(minutes)}m · ${Math.round(speed)}km/h</span>
+          </div>`;
 
-          const p1 = L.latLng(t1.lat, t1.lon);
-          const p2 = L.latLng(t2.lat, t2.lon);
-
-          // Calculate distance in km
-          const distKm = Math.round((p1.distanceTo(p2) / 1000.0) * 10) / 10;
-          const time1 = new Date(t1.timestamp).getTime();
-          const time2 = new Date(t2.timestamp).getTime();
-          const minutesDelta = Math.max(0.1, (time2 - time1) / (1000 * 60));
-          const speedKmh = Math.round((distKm / (minutesDelta / 60)) * 10) / 10;
-
-          const isImpossibleTravel = speedKmh > 900.0 && distKm > 300.0;
-
-          // Draw polyline
-          const polyline = L.polyline([p1, p2], {
-            color: isImpossibleTravel ? "#ef4444" : "#38bdf8",
-            weight: isImpossibleTravel ? 3.5 : 2,
-            dashArray: isImpossibleTravel ? "6, 6" : undefined,
-            opacity: isImpossibleTravel ? 0.95 : 0.6,
-          });
-
-          // Polyline Tooltip
-          polyline.bindTooltip(
-            `<div class="text-xs p-1">
-              <div class="font-bold flex items-center justify-between gap-2">
-                <span class="font-mono text-cyan-400">${accountId}</span>
-                ${isImpossibleTravel ? '<span class="text-red-400 font-bold animate-pulse">IMPOSSIBLE TRAVEL</span>' : '<span class="text-emerald-400 font-bold">NORMAL HOP</span>'}
-              </div>
-              <div class="text-slate-300 mt-1">
-                ${distKm.toLocaleString()} km in ${Math.round(minutesDelta)} min
-              </div>
-              <div class="font-mono font-bold ${isImpossibleTravel ? "text-red-400 text-sm" : "text-white"}">
-                ${Math.round(speedKmh).toLocaleString()} km/h
-              </div>
-            </div>`,
-            { sticky: true }
-          );
-
-          travelPathsLayerRef.current.addLayer(polyline);
-        }
+      const midMarker = L.marker([midLat, midLon], {
+        icon: L.divIcon({
+          html: labelHtml,
+          className: "travel-path-label",
+          iconAnchor: [50, 10],
+        })
       });
+
+      travelPathsLayerRef.current.addLayer(line);
+      travelPathsLayerRef.current.addLayer(midMarker);
+    }
+  }, [selectedAccount, transactions]);
+
+  // Update Heatmap Layer Toggle
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    if (heatLayerRef.current) {
+      mapRef.current.removeLayer(heatLayerRef.current);
+      heatLayerRef.current = null;
     }
 
-    // Auto-fit bounds on initial load if markers exist
-    if (bounds.isValid() && bounds.getNorthEast() && !selectedTxId) {
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+    if (showHeatmap && filteredTransactions.length > 0) {
+      const heatPoints = filteredTransactions.map((t) => [t.lat, t.lon, Math.max(0.2, t.risk_score / 100)]);
+      heatLayerRef.current = (L as any).heatLayer(heatPoints, {
+        radius: 25,
+        blur: 15,
+        maxZoom: 16,
+        gradient: { 0.4: "#3b82f6", 0.65: "#f59e0b", 1.0: "#ef4444" },
+      }).addTo(mapRef.current);
     }
-  }, [filteredTransactions, showTransactions, showCellTowers, showTravelPaths, latestTxId, selectedTxId, onSelectTransaction]);
+  }, [showHeatmap, filteredTransactions]);
 
-  // Handle Auto Fly-To incoming transactions
+  // Auto Fly-To on latest incoming SSE transaction
   useEffect(() => {
     if (!autoFlyTo || !latestTxId || !mapRef.current) return;
-    const latestTx = transactions.find((t) => t.transaction_id === latestTxId);
-    if (latestTx && latestTx.lat && latestTx.lon) {
-      mapRef.current.flyTo([latestTx.lat, latestTx.lon], 7, { duration: 1.2 });
+    const latest = transactions.find((t) => t.transaction_id === latestTxId);
+    if (latest) {
+      mapRef.current.flyTo([latest.lat, latest.lon], 8, { duration: 1.2 });
     }
   }, [latestTxId, autoFlyTo, transactions]);
 
-  // Reset View
+  // Time playback ticker
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      setPlaybackIndex((prev) => {
+        if (prev >= 100) return 10;
+        return prev + 10;
+      });
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+
   const handleResetView = () => {
-    if (!mapRef.current) return;
-    mapRef.current.setView([25.0, 10.0], 3);
+    if (mapRef.current) {
+      mapRef.current.setView([25.0, 10.0], 3);
+    }
   };
 
   return (
-    <div className="relative w-full h-[calc(100vh-8.5rem)] rounded-xl border border-border overflow-hidden bg-background shadow-2xl flex flex-col">
-      {/* Top Map Filter & Layer Toolbar */}
-      <div className="absolute top-3 left-3 right-3 z-[1000] flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-        {/* Filters Group (Pointer events enabled on bar) */}
-        <div className="bg-surface/90 backdrop-blur border border-border rounded-xl p-2 shadow-xl flex flex-wrap items-center gap-2 pointer-events-auto text-xs">
-          {/* Risk Filter */}
+    <div className="flex-1 min-h-[550px] h-full flex flex-col relative rounded-xl overflow-hidden border border-border shadow-2xl bg-[#080c14]">
+      {/* Non-blocking Tile Unavailable Fallback Banner */}
+      {tileError && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[1000] px-4 py-2 rounded-lg bg-amber-950/90 border border-amber-600/80 text-amber-200 text-xs flex items-center space-x-2 shadow-2xl backdrop-blur-md animate-fade-in">
+          <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+          <span>Map tiles unavailable - check MAP_TILE_URL. Showing offline country vector boundaries.</span>
+        </div>
+      )}
+
+      {/* Top Filter & Layers Control Bar */}
+      <div className="p-3 bg-surface-card/90 backdrop-blur-md border-b border-border z-20 flex flex-wrap items-center justify-between gap-3 text-xs">
+        {/* Left Filter Controls */}
+        <div className="flex items-center space-x-2.5 overflow-x-auto">
+          {/* Risk Level Filter */}
           <div className="flex items-center space-x-1.5">
-            <span className="text-muted-dark font-medium text-[11px] uppercase tracking-wider">Risk:</span>
+            <span className="text-[10px] font-semibold text-muted uppercase">Risk:</span>
             <select
               value={riskFilter}
               onChange={(e) => setRiskFilter(e.target.value)}
-              className="bg-surface-elevated border border-border rounded px-2 py-1 text-slate-200 font-medium focus:outline-none focus:border-cyan-500"
+              className="bg-surface-elevated border border-border rounded-md px-2 py-1 text-slate-200 text-xs focus:outline-none"
             >
               <option value="ALL">All Risk Tiers</option>
               <option value="BLOCK">Blocked Only</option>
@@ -314,11 +480,11 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
 
           {/* Country Filter */}
           <div className="flex items-center space-x-1.5">
-            <span className="text-muted-dark font-medium text-[11px] uppercase tracking-wider">Country:</span>
+            <span className="text-[10px] font-semibold text-muted uppercase">Country:</span>
             <select
               value={countryFilter}
               onChange={(e) => setCountryFilter(e.target.value)}
-              className="bg-surface-elevated border border-border rounded px-2 py-1 text-slate-200 font-medium focus:outline-none focus:border-cyan-500"
+              className="bg-surface-elevated border border-border rounded-md px-2 py-1 text-slate-200 text-xs focus:outline-none"
             >
               <option value="ALL">Worldwide (18+ Cities)</option>
               {countries.map((c) => (
@@ -329,11 +495,11 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
 
           {/* Channel Filter */}
           <div className="flex items-center space-x-1.5">
-            <span className="text-muted-dark font-medium text-[11px] uppercase tracking-wider">Channel:</span>
+            <span className="text-[10px] font-semibold text-muted uppercase">Channel:</span>
             <select
               value={channelFilter}
               onChange={(e) => setChannelFilter(e.target.value)}
-              className="bg-surface-elevated border border-border rounded px-2 py-1 text-slate-200 font-medium focus:outline-none focus:border-cyan-500"
+              className="bg-surface-elevated border border-border rounded-md px-2 py-1 text-slate-200 text-xs focus:outline-none"
             >
               <option value="ALL">All Channels</option>
               <option value="MOBILE_APP">Mobile App</option>
@@ -344,117 +510,172 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
           </div>
 
           {/* Account Search */}
-          <div className="flex items-center bg-surface-elevated border border-border rounded px-2 py-1">
-            <Search className="h-3 w-3 text-muted-dark mr-1" />
+          <div className="relative">
             <input
               type="text"
               placeholder="Account ID..."
               value={accountSearch}
               onChange={(e) => setAccountSearch(e.target.value)}
-              className="bg-transparent text-slate-200 focus:outline-none w-24 text-xs font-mono"
+              className="bg-surface-elevated border border-border rounded-md pl-2.5 pr-6 py-1 text-xs text-slate-200 placeholder-muted-dark w-28 focus:w-36 transition-all focus:outline-none"
             />
           </div>
 
-          {/* "Blocked Only" Quick Toggle */}
-          <label className="flex items-center space-x-1.5 cursor-pointer ml-1 text-slate-300 hover:text-white select-none">
+          {/* Blocked Only Toggle */}
+          <label className="flex items-center space-x-1.5 cursor-pointer text-muted hover:text-slate-200">
             <input
               type="checkbox"
               checked={blockedOnly}
               onChange={(e) => setBlockedOnly(e.target.checked)}
               className="rounded accent-red-500"
             />
-            <span className="font-semibold text-red-400">Blocked Only</span>
+            <span>Blocked Only</span>
           </label>
-
-          {/* Counter badge */}
-          <div className="px-2 py-0.5 rounded bg-surface-card border border-border text-[11px] font-mono text-cyan-300">
-            {filteredTransactions.length} shown / {transactions.length} total
-          </div>
         </div>
 
-        {/* Right Controls: Layer Toggles & Fly-To */}
-        <div className="bg-surface/90 backdrop-blur border border-border rounded-xl p-2 shadow-xl flex items-center space-x-2 pointer-events-auto text-xs">
-          {/* Layer Toggles */}
-          <button
-            onClick={() => setShowTransactions(!showTransactions)}
-            className={`px-2 py-1 rounded flex items-center space-x-1.5 transition ${
-              showTransactions ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40" : "text-muted hover:text-white"
-            }`}
-          >
-            <MapPin className="h-3 w-3" />
-            <span>Txns</span>
-          </button>
+        {/* Right Counters & Layer Toggles */}
+        <div className="flex items-center space-x-2">
+          {/* Live Counter */}
+          <span className="px-2 py-1 rounded bg-surface-elevated font-mono text-[11px] text-cyan-300 border border-border">
+            <b className="text-white">{filteredTransactions.length}</b> shown / {transactions.length} total
+          </span>
 
+          {/* Cell Towers Toggle */}
           <button
             onClick={() => setShowCellTowers(!showCellTowers)}
-            className={`px-2 py-1 rounded flex items-center space-x-1.5 transition ${
-              showCellTowers ? "bg-purple-500/20 text-purple-300 border border-purple-500/40" : "text-muted hover:text-white"
+            className={`px-2.5 py-1 rounded text-xs font-medium flex items-center space-x-1.5 transition ${
+              showCellTowers
+                ? "bg-purple-950/60 text-purple-300 border border-purple-800/60"
+                : "bg-surface-elevated text-muted border border-border hover:text-white"
             }`}
           >
             <Radio className="h-3 w-3" />
             <span>Cell Towers</span>
           </button>
 
+          {/* Heatmap Toggle */}
           <button
-            onClick={() => setShowTravelPaths(!showTravelPaths)}
-            className={`px-2 py-1 rounded flex items-center space-x-1.5 transition ${
-              showTravelPaths ? "bg-blue-500/20 text-blue-300 border border-blue-500/40" : "text-muted hover:text-white"
+            onClick={() => setShowHeatmap(!showHeatmap)}
+            className={`px-2.5 py-1 rounded text-xs font-medium flex items-center space-x-1.5 transition ${
+              showHeatmap
+                ? "bg-red-950/60 text-red-300 border border-red-800/60"
+                : "bg-surface-elevated text-muted border border-border hover:text-white"
             }`}
           >
-            <Navigation className="h-3 w-3" />
-            <span>Travel Paths</span>
+            <Flame className="h-3 w-3 text-red-400" />
+            <span>Heatmap</span>
           </button>
 
-          {/* Fly-To Toggle */}
+          {/* Auto Fly-to Toggle */}
           <button
             onClick={() => setAutoFlyTo(!autoFlyTo)}
-            className={`px-2 py-1 rounded flex items-center space-x-1.5 transition ${
-              autoFlyTo ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" : "text-muted hover:text-white"
+            className={`px-2.5 py-1 rounded text-xs font-medium flex items-center space-x-1.5 transition ${
+              autoFlyTo
+                ? "bg-cyan-950/60 text-cyan-300 border border-cyan-800/60"
+                : "bg-surface-elevated text-muted border border-border hover:text-white"
             }`}
             title="Auto-center on incoming SSE transactions"
           >
-            <Compass className="h-3 w-3" />
+            <Navigation className="h-3 w-3" />
             <span>Fly-To Live</span>
           </button>
 
           {/* Reset View */}
           <button
             onClick={handleResetView}
-            className="p-1.5 rounded hover:bg-surface-elevated text-muted hover:text-white transition"
+            className="p-1.5 rounded bg-surface-elevated hover:bg-surface-hover border border-border text-muted hover:text-white transition"
             title="Reset to global view"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <Compass className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* Main Leaflet Map View */}
-      <div ref={mapContainerRef} className="w-full h-full z-10" />
+      {/* Main Leaflet Map Canvas */}
+      <div 
+        ref={mapContainerRef} 
+        className="flex-1 w-full h-full relative z-10 bg-[#080c14]"
+      />
 
-      {/* Bottom Map Legend */}
-      <div className="absolute bottom-4 left-4 z-[1000] bg-surface/90 backdrop-blur border border-border rounded-xl p-2.5 shadow-xl text-[11px] space-y-1.5 select-none">
-        <span className="font-semibold text-slate-200 block text-[10px] uppercase tracking-wider mb-1">Threat Legend</span>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
-            <span className="text-slate-300">ALLOW</span>
+      {/* Bottom Timeline Playback Slider Bar */}
+      <div className="absolute bottom-4 left-6 right-20 z-20 px-4 py-2.5 rounded-xl bg-surface-card/90 backdrop-blur-md border border-border shadow-2xl flex items-center space-x-4 text-xs">
+        <button
+          onClick={() => setIsPlaying(!isPlaying)}
+          className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/40 transition shrink-0"
+          title={isPlaying ? "Pause timeline replay" : "Play timeline replay"}
+        >
+          {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+        </button>
+
+        <span className="text-[11px] font-mono text-muted whitespace-nowrap shrink-0">Time Horizon</span>
+
+        <input
+          type="range"
+          min="10"
+          max="100"
+          step="5"
+          value={playbackIndex}
+          onChange={(e) => setPlaybackIndex(parseInt(e.target.value))}
+          className="flex-1 accent-cyan-400 h-1.5 bg-surface-elevated rounded cursor-pointer"
+        />
+
+        <span className="font-mono text-cyan-300 text-[11px] shrink-0">
+          {playbackIndex}% ({filteredTransactions.length} events)
+        </span>
+      </div>
+
+      {/* Collapsible Threat Map Legend Card */}
+      <div className="absolute bottom-16 right-6 z-20">
+        <div className="rounded-xl bg-surface-card/90 backdrop-blur-md border border-border shadow-2xl overflow-hidden transition-all text-xs">
+          <div 
+            onClick={() => setShowLegend(!showLegend)}
+            className="px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-surface-elevated space-x-3 select-none"
+          >
+            <div className="flex items-center space-x-1.5 text-slate-200 font-semibold text-[11px]">
+              <Layers className="h-3.5 w-3.5 text-cyan-400" />
+              <span>Map Legend</span>
+            </div>
+            {showLegend ? <ChevronDown className="h-3.5 w-3.5 text-muted" /> : <ChevronUp className="h-3.5 w-3.5 text-muted" />}
           </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-amber-400"></span>
-            <span className="text-slate-300">REVIEW</span>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-500"></span>
-            <span className="text-slate-300 font-bold">BLOCK</span>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-purple-400"></span>
-            <span className="text-purple-300">Cell Tower</span>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="h-0.5 w-4 bg-red-500 inline-block"></span>
-            <span className="text-red-400 font-medium">&gt;900 km/h Travel</span>
-          </div>
+
+          {showLegend && (
+            <div className="px-3.5 pb-3 pt-1 space-y-2 border-t border-border/60 text-[11px]">
+              {/* Decision Colors */}
+              <div className="space-y-1">
+                <p className="text-[10px] uppercase font-bold text-muted-dark tracking-wider">Transaction Risk</p>
+                <div className="flex items-center space-x-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></span>
+                  <span className="text-slate-300">Allow (0 - 39)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50"></span>
+                  <span className="text-slate-300">Review Queue (40 - 79)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500/50"></span>
+                  <span className="text-slate-300">Block / Quarantine (80 - 100)</span>
+                </div>
+              </div>
+
+              {/* Cell Tower & Travel Path */}
+              <div className="space-y-1 pt-1 border-t border-border/40">
+                <p className="text-[10px] uppercase font-bold text-muted-dark tracking-wider">Telemetry Layers</p>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3.5 h-3.5 rounded bg-purple-900 border border-purple-500 flex items-center justify-center">
+                    <Radio className="h-2.5 w-2.5 text-purple-200" />
+                  </div>
+                  <span className="text-slate-300">Cell Tower (Carrier Pin)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="w-4 h-0.5 bg-red-500 inline-block border-b border-dashed border-red-300"></span>
+                  <span className="text-red-300 font-bold">&gt;900 km/h Impossible</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="w-4 h-0.5 bg-slate-500 inline-block"></span>
+                  <span className="text-slate-400">Normal Travel Path</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

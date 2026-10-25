@@ -1926,5 +1926,67 @@
     "reason": "Review complete",
     "notes": "Verified legitimate travel with cardholder",
     "timestamp": "2026-10-25T08:45:54Z"
+  },
+  {
+    "transaction_id": "tx_q_act_test",
+    "action": "CONFIRM_FRAUD",
+    "previous_status": "CONFIRMED_FRAUD",
+    "new_status": "CONFIRMED_FRAUD",
+    "operator": "analyst_test",
+    "role": "analyst",
+    "reason": "Confirmed malicious Tor relay node",
+    "notes": "Confirmed malicious Tor relay node",
+    "timestamp": "2026-10-25T09:23:53Z"
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "action": "RELEASE",
+    "previous_status": "QUARANTINED",
+    "new_status": "RELEASED",
+    "operator": "admin_user",
+    "role": "admin",
+    "reason": "Bulk review",
+    "notes": "Bulk review",
+    "timestamp": "2026-10-25T09:23:54Z"
+  },
+  {
+    "transaction_id": "tx_q_act_test",
+    "action": "CONFIRM_FRAUD",
+    "previous_status": "CONFIRMED_FRAUD",
+    "new_status": "CONFIRMED_FRAUD",
+    "operator": "analyst_test",
+    "role": "analyst",
+    "reason": "Confirmed malicious Tor relay node",
+    "notes": "Confirmed malicious Tor relay node",
+    "timestamp": "2026-10-25T09:25:37Z"
+  },
+  {
+    "transaction_id": "tx_sim_1792920338651_3",
+    "action": "CONFIRM_FRAUD",
+    "previous_status": "QUARANTINED",
+    "new_status": "CONFIRMED_FRAUD",
+    "operator": "QA_Lead",
+    "role": "analyst",
+    "reason": "Confirmed exit relay",
+    "notes": "Blocked in test",
+    "timestamp": "2026-10-25T09:25:38Z"
+  },
+  {
+    "transaction_id": "tx_sim_1792920338805_4",
+    "action": "PII_UNMASK_REVEAL",
+    "operator": "Sarah Chen",
+    "role": "analyst",
+    "timestamp": "2026-10-25T09:25:38Z"
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "action": "RELEASE",
+    "previous_status": "QUARANTINED",
+    "new_status": "RELEASED",
+    "operator": "admin_user",
+    "role": "admin",
+    "reason": "Bulk review",
+    "notes": "Bulk review",
+    "timestamp": "2026-10-25T09:25:39Z"
   }
 ]
