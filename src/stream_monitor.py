@@ -459,6 +459,121 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, {"account_id": account_id, "trail": trail})
             return
 
+        # 6B. REST API: /api/map/transactions
+        if path == "/api/map/transactions":
+            from src.tower_geo_helper import enrich_map_transaction
+            combined, _, _ = get_combined_records(self.get_db())
+
+            from_ts = query.get("from", [None])[0]
+            to_ts = query.get("to", [None])[0]
+            risk_filter = query.get("risk", [None])[0]
+            country_filter = query.get("country", [None])[0]
+            account_filter = query.get("account", [None])[0]
+            channel_filter = query.get("channel", [None])[0]
+            blocked_only = query.get("blocked_only", ["false"])[0].lower() in ("true", "1")
+
+            try:
+                limit = min(2000, max(1, int(query.get("limit", [500])[0])))
+            except (ValueError, TypeError):
+                limit = 500
+
+            filtered = []
+            for r in combined:
+                ts = str(r.get("timestamp") or r.get("quarantine_ts") or "")
+                if from_ts and ts < from_ts:
+                    continue
+                if to_ts and ts > to_ts:
+                    continue
+
+                acct = str(r.get("account_id") or r.get("source_account") or "")
+                if account_filter and account_filter != "ALL" and acct != account_filter:
+                    continue
+
+                r_country = str((r.get("origin") or {}).get("country") or r.get("transaction_country") or "").upper()
+                if country_filter and country_filter != "ALL" and r_country != country_filter.upper():
+                    continue
+
+                r_channel = str((r.get("attributes") or {}).get("payment_channel") or r.get("channel") or r.get("txn_type") or "").upper()
+                if channel_filter and channel_filter != "ALL" and r_channel != channel_filter.upper():
+                    continue
+
+                decision = str(r.get("decision") or r.get("action") or "").upper()
+                is_blocked = decision == "BLOCK" or r.get("status") == "QUARANTINED"
+                if blocked_only and not is_blocked:
+                    continue
+
+                risk_val = float(r.get("risk_score") or r.get("score") or 0.0)
+                if risk_filter and risk_filter != "ALL":
+                    rf = risk_filter.upper()
+                    if rf in ("BLOCK", "HIGH", "CRITICAL") and not (is_blocked or risk_val >= 80):
+                        continue
+                    elif rf in ("REVIEW", "MEDIUM", "ELEVATED") and not (decision == "REVIEW_QUEUE" or (40 <= risk_val < 80)):
+                        continue
+                    elif rf in ("ALLOW", "LOW", "NOMINAL") and (is_blocked or risk_val >= 40):
+                        continue
+
+                filtered.append(r)
+                if len(filtered) >= limit:
+                    break
+
+            map_items = [enrich_map_transaction(r, combined) for r in filtered]
+            self._send_json(200, {
+                "total_matched": len(map_items),
+                "limit": limit,
+                "items": map_items
+            })
+            return
+
+        # 6C. REST API: /api/map/transactions/{id}
+        if path.startswith("/api/map/transactions/"):
+            from src.tower_geo_helper import enrich_map_transaction
+            parts = [p for p in path.split("/") if p]
+            tx_id = unquote(parts[3] if len(parts) >= 4 else parts[-1])
+
+            combined, _, _ = get_combined_records(self.get_db())
+            tx_record = next((r for r in combined if r.get("transaction_id") == tx_id), None)
+            if not tx_record:
+                tx_record = self.get_db().get_transaction_by_id(tx_id)
+
+            if not tx_record:
+                self._send_json(404, {"error": "NOT_FOUND", "transaction_id": tx_id})
+                return
+
+            enriched = enrich_map_transaction(tx_record, combined)
+            acct_id = enriched["account_id"]
+            acct_all = [r for r in combined if (r.get("account_id") or r.get("source_account")) == acct_id]
+            acct_all.sort(key=lambda x: str(x.get("timestamp") or x.get("quarantine_ts") or ""), reverse=True)
+
+            prev_tx = None
+            for idx, item in enumerate(acct_all):
+                if item.get("transaction_id") == tx_id and idx + 1 < len(acct_all):
+                    prev_tx = acct_all[idx + 1]
+                    break
+
+            gap_str = "First recorded transaction"
+            if prev_tx:
+                try:
+                    curr_dt = datetime.fromisoformat(str(enriched["timestamp"]).replace("Z", "+00:00"))
+                    prev_dt = datetime.fromisoformat(str(prev_tx.get("timestamp") or prev_tx.get("quarantine_ts")).replace("Z", "+00:00"))
+                    diff_sec = abs((curr_dt - prev_dt).total_seconds())
+                    if diff_sec < 60:
+                        gap_str = f"{int(diff_sec)} seconds"
+                    elif diff_sec < 3600:
+                        gap_str = f"{int(diff_sec // 60)} minutes"
+                    elif diff_sec < 86400:
+                        gap_str = f"{round(diff_sec / 3600.0, 1)} hours"
+                    else:
+                        gap_str = f"{round(diff_sec / 86400.0, 1)} days"
+                except Exception:
+                    gap_str = "N/A"
+
+            enriched["gap_since_previous"] = gap_str
+            enriched["account_mini_timeline"] = [
+                enrich_map_transaction(r, combined) for r in acct_all[:5]
+            ]
+            self._send_json(200, enriched)
+            return
+
         # 7. REST API: /api/quarantine
         if path == "/api/quarantine":
             qm = QuarantineManager(db_client=self.get_db())
@@ -700,6 +815,11 @@ class ThreadedConsoleServer(ThreadingHTTPServer):
 
 
 def run_server(port: int = 8081) -> None:
+    try:
+        from src.map_seeder import seed_historical_map_data
+        seed_historical_map_data(DBClient(), force=False)
+    except Exception as e:
+        pass
     server_address = ("0.0.0.0", port)
     httpd = ThreadedConsoleServer(server_address, TelemetryHTTPRequestHandler)
     print("\n==========================================================================")

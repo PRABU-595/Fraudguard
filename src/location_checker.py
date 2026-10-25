@@ -37,6 +37,15 @@ CITY_COORDINATES: Dict[str, Dict[str, Any]] = {
     "zurich": {"lat": 47.3769, "lon": 8.5417, "country": "CH"},
     "bucharest": {"lat": 44.4268, "lon": 26.1025, "country": "RO"},
     "singapore": {"lat": 1.3521, "lon": 103.8198, "country": "SG"},
+    "tokyo": {"lat": 35.6762, "lon": 139.6503, "country": "JP"},
+    "sydney": {"lat": -33.8688, "lon": 151.2093, "country": "AU"},
+    "paris": {"lat": 48.8566, "lon": 2.3522, "country": "FR"},
+    "berlin": {"lat": 52.5200, "lon": 13.4050, "country": "DE"},
+    "toronto": {"lat": 43.6532, "lon": -79.3832, "country": "CA"},
+    "sao paulo": {"lat": -23.5505, "lon": -46.6333, "country": "BR"},
+    "dubai": {"lat": 25.2048, "lon": 55.2708, "country": "AE"},
+    "hong kong": {"lat": 22.3193, "lon": 114.1694, "country": "HK"},
+    "seoul": {"lat": 37.5665, "lon": 126.9780, "country": "KR"},
 }
 
 
