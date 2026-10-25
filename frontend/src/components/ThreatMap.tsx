@@ -5,6 +5,7 @@ import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.heat";
+import worldCountriesGeoJson from "../assets/world_countries.json";
 import { 
   MapPin, 
   Radio, 
@@ -254,27 +255,26 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
       heatmapPane.style.zIndex = "450";
     }
 
-    // Load fallback country outlines GeoJSON
-    fetch("/world_countries.json")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data && mapRef.current) {
-          geoJsonLayerRef.current = L.geoJSON(data, {
-            style: {
-              fillColor: "#0f172a",
-              weight: 1,
-              color: "#334155",
-              fillOpacity: 0.6,
-            }
-          }).addTo(mapRef.current);
+    // Inlined country outlines GeoJSON for zero-latency instant vector basemap
+    if (worldCountriesGeoJson && mapRef.current) {
+      geoJsonLayerRef.current = L.geoJSON(worldCountriesGeoJson as any, {
+        style: {
+          fillColor: "#0f172a",
+          weight: 1,
+          color: "#334155",
+          fillOpacity: 0.6,
         }
-      })
-      .catch(() => {});
+      }).addTo(mapRef.current);
+    }
 
-    // Add Tile Layer with CSS dark filter
+    // Add Tile Layer with CSS dark filter & high-performance buffer caching
     const tileLayer = L.tileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
+      minZoom: 2,
       maxZoom: 19,
+      noWrap: false,
+      keepBuffer: 6,
+      updateWhenIdle: true,
       className: "soc-dark-tile-filter",
     });
 

@@ -742,6 +742,8 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                     break
 
             all_enriched = [enrich_map_transaction(r, combined) for r in filtered]
+            for e in all_enriched:
+                e.pop('raw_record', None)
             with_coords = [e for e in all_enriched if e.get("has_coordinates")]
             without_coords = [e for e in all_enriched if not e.get("has_coordinates")]
 
@@ -1171,6 +1173,9 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
 
         self._send_json(404, {"error": "NOT_FOUND", "path": path})
 
+    def address_string(self) -> str:
+        return str(self.client_address[0])
+
     def log_message(self, format: str, *args: Any) -> None:
         pass
 
@@ -1178,6 +1183,14 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
 class ThreadedConsoleServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
+
+    def server_bind(self) -> None:
+        if getattr(self, "address_family", None) == socket.AF_INET6:
+            try:
+                self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+            except Exception:
+                pass
+        super().server_bind()
 
     def handle_error(self, request: Any, client_address: Any) -> None:
         # Silently absorb client disconnects (ConnectionResetError, BrokenPipeError) on SSE
@@ -1190,8 +1203,16 @@ def run_server(port: int = 8081) -> None:
         seed_historical_map_data(DBClient(), force=False)
     except Exception as e:
         pass
-    server_address = ("0.0.0.0", port)
-    httpd = ThreadedConsoleServer(server_address, TelemetryHTTPRequestHandler)
+    httpd = None
+    if socket.has_ipv6:
+        try:
+            class DualStackConsoleServer(ThreadedConsoleServer):
+                address_family = socket.AF_INET6
+            httpd = DualStackConsoleServer(("::", port), TelemetryHTTPRequestHandler)
+        except Exception:
+            httpd = None
+    if httpd is None:
+        httpd = ThreadedConsoleServer(("0.0.0.0", port), TelemetryHTTPRequestHandler)
     print("\n==========================================================================")
     print(f" FraudGuard Real-Time Console Running at: http://localhost:{port}")
     print("==========================================================================\n")
