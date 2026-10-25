@@ -277,10 +277,13 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
     // Initialize marker cluster group with Donut cluster icons and hover proportions
     const clusterGroup = (L as any).markerClusterGroup({
       chunkedLoading: true,
-      maxClusterRadius: 50,
+      chunkInterval: 100,
+      chunkDelay: 10,
+      maxClusterRadius: 55,
       spiderfyOnMaxZoom: true,
       showCoverageOnHover: false,
       zoomToBoundsOnClick: true,
+      animate: false, // Instant cluster rendering with zero frame drop
       iconCreateFunction: (cluster: any) => {
         const markers = cluster.getAllChildMarkers();
         const total = markers.length;
@@ -424,69 +427,67 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
 
       (marker as any).options.decision = isBlock ? "BLOCK" : isReview ? "REVIEW" : "ALLOW";
 
-      // Rich High-Definition Threat Card Popup
-      const popupContent = `
-        <div class="soc-detail-popup font-sans text-slate-100">
-          <div style="display:flex; align-items:center; justify-content:space-between; padding-bottom:8px; border-bottom:1px solid #1e293b;">
-            <div style="font-family:monospace; font-size:12px; font-weight:700; color:#ffffff;">
-              ${tx.transaction_id}
-            </div>
-            <span style="padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; font-family:monospace; ${
-              isBlock ? 'background:#450a0a; color:#fca5a5; border:1px solid #ef4444;' :
-              isReview ? 'background:#451a03; color:#fcd34d; border:1px solid #f59e0b;' :
-              'background:#064e3b; color:#6ee7b7; border:1px solid #10b981;'
-            }">
-              ${tx.decision}
-            </span>
-          </div>
+      marker.bindPopup(() => {
+        const isBlockNow = tx.decision === "BLOCK" || tx.status === "QUARANTINED" || (tx.risk_score || 0) >= 80;
+        const isReviewNow = tx.decision === "REVIEW_QUEUE" || tx.decision === "REVIEW";
+        const fmtAmt = tx.currency === "INR" ? `₹${(tx.amount || 0).toLocaleString("en-IN")}` : `$${(tx.amount || 0).toFixed(2)}`;
+        const rScore = Math.round(tx.risk_score || 0);
 
-          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:8px 0; border-bottom:1px solid #1e293b;">
-            <div>
-              <div style="font-size:10px; color:#94a3b8; text-transform:uppercase; font-weight:600;">Amount</div>
-              <div style="font-size:16px; font-weight:800; color:#ffffff; font-family:monospace;">${formattedAmount}</div>
+        return `
+          <div class="soc-detail-popup font-sans text-slate-100">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding-bottom:8px; border-bottom:1px solid #1e293b;">
+              <div style="font-family:monospace; font-size:12px; font-weight:700; color:#ffffff;">
+                ${tx.transaction_id}
+              </div>
+              <span style="padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; font-family:monospace; ${
+                isBlockNow ? 'background:#450a0a; color:#fca5a5; border:1px solid #ef4444;' :
+                isReviewNow ? 'background:#451a03; color:#fcd34d; border:1px solid #f59e0b;' :
+                'background:#064e3b; color:#6ee7b7; border:1px solid #10b981;'
+              }">
+                ${tx.decision}
+              </span>
             </div>
-            <div style="text-align:right;">
-              <div style="font-size:10px; color:#94a3b8; text-transform:uppercase; font-weight:600;">Risk Score</div>
-              <div style="font-size:14px; font-weight:700; font-family:monospace; color:${isBlock ? '#ef4444' : isReview ? '#f59e0b' : '#10b981'};">
-                ${riskScore} / 100
+
+            <div style="display:flex; justify-content:space-between; align-items:baseline; padding:8px 0; border-bottom:1px solid #1e293b;">
+              <div>
+                <div style="font-size:10px; color:#94a3b8; text-transform:uppercase; font-weight:600;">Amount</div>
+                <div style="font-size:16px; font-weight:800; color:#ffffff; font-family:monospace;">${fmtAmt}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:10px; color:#94a3b8; text-transform:uppercase; font-weight:600;">Risk Score</div>
+                <div style="font-size:14px; font-weight:700; font-family:monospace; color:${isBlockNow ? '#ef4444' : isReviewNow ? '#f59e0b' : '#10b981'};">
+                  ${rScore} / 100
+                </div>
               </div>
             </div>
-          </div>
 
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:8px 0; font-family:monospace; font-size:11px; border-bottom:1px solid #1e293b;">
-            <div>
-              <span style="font-size:9px; color:#64748b; text-transform:uppercase; display:block;">Location</span>
-              <span style="color:#e2e8f0; font-weight:600;">${tx.city || "Mumbai"}, ${tx.country || "IN"}</span>
-            </div>
-            <div>
-              <span style="font-size:9px; color:#64748b; text-transform:uppercase; display:block;">Channel</span>
-              <span style="color:#e2e8f0;">${(tx.channel || "MOBILE_APP").replace(/_/g, ' ')}</span>
-            </div>
-            ${tx.cell_tower ? `
-              <div style="grid-column: span 2;">
-                <span style="font-size:9px; color:#64748b; text-transform:uppercase; display:block;">Nearby Carrier Tower</span>
-                <span style="color:#d8b4fe;">${tx.cell_tower.carrier || "Cellular"} · ${Math.round(tx.cell_tower.distance_meters || 0)}m (${tx.cell_tower.tower_id})</span>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:8px 0; font-family:monospace; font-size:11px; border-bottom:1px solid #1e293b;">
+              <div>
+                <span style="font-size:9px; color:#64748b; text-transform:uppercase; display:block;">Location</span>
+                <span style="color:#e2e8f0; font-weight:600;">${tx.city || "Mumbai"}, ${tx.country || "IN"}</span>
               </div>
-            ` : ""}
-            ${tx.flags && tx.flags.length > 0 ? `
-              <div style="grid-column: span 2;">
-                <span style="font-size:9px; color:#64748b; text-transform:uppercase; display:block;">Triggered Risk Rules</span>
-                <span style="color:#fcd34d;">${tx.flags.map((f: any) => f.label || f.flag).join(", ")}</span>
+              <div>
+                <span style="font-size:9px; color:#64748b; text-transform:uppercase; display:block;">Channel</span>
+                <span style="color:#e2e8f0;">${(tx.channel || "MOBILE_APP").replace(/_/g, ' ')}</span>
               </div>
-            ` : ""}
+              ${tx.cell_tower ? `
+                <div style="grid-column: span 2;">
+                  <span style="font-size:9px; color:#64748b; text-transform:uppercase; display:block;">Nearby Carrier Tower</span>
+                  <span style="color:#d8b4fe;">${tx.cell_tower.carrier || "Cellular"} · ${Math.round(tx.cell_tower.distance_meters || 0)}m (${tx.cell_tower.tower_id})</span>
+                </div>
+              ` : ""}
+            </div>
+
+            <button
+              style="width:100%; margin-top:10px; padding:8px 12px; border-radius:6px; background:#0284c7; color:#ffffff; font-weight:600; font-size:11px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(2,132,199,0.4);"
+              onclick="window.__selectAndOpenTx && window.__selectAndOpenTx('${tx.transaction_id}')"
+            >
+              <span>Open Full Forensic Drawer</span>
+              <span>➔</span>
+            </button>
           </div>
-
-          <button
-            style="width:100%; margin-top:10px; padding:8px 12px; border-radius:6px; background:#0284c7; color:#ffffff; font-weight:600; font-size:11px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(2,132,199,0.4);"
-            onclick="window.__selectAndOpenTx && window.__selectAndOpenTx('${tx.transaction_id}')"
-          >
-            <span>Open Full Forensic Drawer</span>
-            <span>➔</span>
-          </button>
-        </div>
-      `;
-
-      marker.bindPopup(() => popupContent, {
+        `;
+      }, {
         className: "custom-soc-popup",
         maxWidth: 320,
         minWidth: 260,

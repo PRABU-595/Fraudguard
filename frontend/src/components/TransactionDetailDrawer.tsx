@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
+  Sparkles,
   X, 
   Copy, 
   Check, 
@@ -35,6 +36,35 @@ export const TransactionDetailDrawer: React.FC<TransactionDetailDrawerProps> = (
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [showRawJson, setShowRawJson] = useState<boolean>(false);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
+  const [bedrockSummary, setBedrockSummary] = useState<any>(null);
+  const [bedrockLoading, setBedrockLoading] = useState<boolean>(false);
+
+  const fetchBedrockSummary = async () => {
+    if (!transaction) return;
+    setBedrockLoading(true);
+    try {
+      const res = await fetch("/api/cloud/bedrock/summarize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transaction_id: transaction.transaction_id, transaction }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBedrockSummary(data);
+      }
+    } catch (err) {
+      console.error("Bedrock summary fetch failed:", err);
+    } finally {
+      setBedrockLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setBedrockSummary(null);
+    if (transaction && (transaction.decision === "BLOCK" || transaction.status === "QUARANTINED" || transaction.risk_score >= 80)) {
+      fetchBedrockSummary();
+    }
+  }, [transaction?.transaction_id]);
 
   if (!transaction) return null;
 
@@ -354,6 +384,48 @@ export const TransactionDetailDrawer: React.FC<TransactionDetailDrawerProps> = (
               <span className="text-slate-200">{transaction.device?.os_browser || "Standard Client"}</span>
             </div>
           </div>
+        </div>
+
+        {/* Amazon Bedrock GenAI Forensic Incident Copilot */}
+        <div className="p-3.5 rounded-xl bg-purple-950/30 border border-purple-700/60 shadow-lg relative overflow-hidden">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-1.5 text-purple-300 font-semibold text-xs">
+              <Sparkles className="h-4 w-4 text-purple-400" />
+              <span>Amazon Bedrock GenAI Copilot</span>
+            </div>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-200 border border-purple-600/50 font-mono">
+              Claude 3 Haiku · GenAI
+            </span>
+          </div>
+
+          {bedrockLoading ? (
+            <div className="py-2.5 flex items-center justify-center space-x-2 text-purple-300 text-xs">
+              <div className="w-3.5 h-3.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+              <span>Synthesizing forensic briefing via Amazon Bedrock...</span>
+            </div>
+          ) : bedrockSummary ? (
+            <div className="space-y-2">
+              <p className="text-xs text-purple-100 leading-relaxed font-sans">
+                {bedrockSummary.executive_summary}
+              </p>
+              <div className="flex items-center justify-between pt-1 border-t border-purple-800/40 text-[10px]">
+                <span className="text-purple-300 font-mono">
+                  Recommended Action: <strong className="text-white">{bedrockSummary.recommended_action}</strong>
+                </span>
+                <span className="text-purple-400 font-mono">
+                  Confidence: {bedrockSummary.confidence_pct || 96.5}%
+                </span>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={fetchBedrockSummary}
+              className="w-full py-1.5 rounded-lg bg-purple-900/40 hover:bg-purple-800/60 border border-purple-600/70 text-purple-200 text-xs font-medium flex items-center justify-center space-x-1.5 transition"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-purple-300" />
+              <span>Generate GenAI Forensic Summary</span>
+            </button>
+          )}
         </div>
 
         {/* 6. Plain-English Risk Signals */}

@@ -42020,7 +42020,7 @@
     "ttl_epoch": 1793532891,
     "ttl_expiry": 1795520091,
     "analyst_notes": "Bulk review",
-    "updated_ts": "2026-10-25T11:57:15Z"
+    "updated_ts": "2026-10-25T12:38:46Z"
   },
   {
     "transaction_id": "tx_sim_1792928098247_3",
@@ -44170,5 +44170,567 @@
     "ttl_epoch": 1793534238,
     "ttl_expiry": 1795521438,
     "updated_ts": "2026-10-25T11:57:18Z"
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "account_id": "acc_test_bulk",
+    "amount": 500.0,
+    "risk_score": 95.0,
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "timestamp": "2026-10-25T12:36:22.931249+00:00",
+    "ttl_epoch": 1793536583,
+    "ttl_expiry": 1795523783
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "account_id": "acc_test_bulk",
+    "amount": 500.0,
+    "risk_score": 95.0,
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "timestamp": "2026-10-25T12:37:17.512237+00:00",
+    "ttl_epoch": 1793536637,
+    "ttl_expiry": 1795523837
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "account_id": "acc_test_bulk",
+    "amount": 500.0,
+    "risk_score": 95.0,
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "timestamp": "2026-10-25T12:38:46.186609+00:00",
+    "ttl_epoch": 1793536726,
+    "ttl_expiry": 1795523926
+  },
+  {
+    "transaction_id": "tx_sim_1792931928578_3",
+    "account_id": "acc_tor_73",
+    "source_account": "acc_tor_73",
+    "destination_account": "acc_crypto_exchange",
+    "timestamp": "2026-10-25T12:38:48Z",
+    "quarantine_ts": "2026-10-25T12:38:48Z",
+    "amount": 250.0,
+    "txn_type": "WIRE",
+    "merchant": "acc_crypto_exchange",
+    "merchant_category": "WIRE",
+    "reason_codes": [
+      "AMOUNT_ANOMALY",
+      "CHANNEL_RISK",
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "NEW_ACCOUNT",
+      "UNVERIFIED_CONTACT",
+      "SIM_SWAP_DETECTED"
+    ],
+    "flags": [
+      "AMOUNT_ANOMALY",
+      "CHANNEL_RISK",
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "NEW_ACCOUNT",
+      "UNVERIFIED_CONTACT",
+      "SIM_SWAP_DETECTED"
+    ],
+    "triggered_rules": [
+      "AMOUNT_ANOMALY",
+      "CHANNEL_RISK",
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "NEW_ACCOUNT",
+      "UNVERIFIED_CONTACT",
+      "SIM_SWAP_DETECTED"
+    ],
+    "risk_score": 100,
+    "total_risk": 1.0,
+    "decision": "BLOCK",
+    "action": "BLOCK",
+    "status": "CONFIRMED_FRAUD",
+    "origin": {
+      "country": "DE",
+      "city": "Frankfurt",
+      "region": "HE",
+      "isp": "Tor Exit Node / Zwiebelfreunde",
+      "asn": "AS206238 Freedom & Privacy Network",
+      "connection_type": "tor",
+      "is_vpn": false,
+      "is_proxy": true,
+      "is_tor": true,
+      "is_datacenter": true,
+      "coordinates": {
+        "lat": 50.1109,
+        "lon": 8.6821
+      },
+      "timezone": "Europe/Berlin",
+      "ip_address": "185.220.101.1",
+      "threat_level": "CRITICAL"
+    },
+    "traceback": {
+      "account_transaction_count": 1,
+      "previous_transaction_id": null,
+      "previous_transaction_ts": null,
+      "previous_amount": 0.0,
+      "previous_merchant": "",
+      "previous_location": "",
+      "chain_risk_score": 100.0,
+      "velocity_1hr": 1,
+      "velocity_24hr": 1,
+      "velocity_7d": 1,
+      "amount_delta_pct": 0.0,
+      "amount_zscore": null,
+      "entity_graph": {
+        "nodes": [
+          {
+            "id": "acc:acc_tor_73",
+            "label": "acc_tor_73",
+            "type": "account",
+            "risk": "LOW"
+          },
+          {
+            "id": "dev:fp_default",
+            "label": "fp_default",
+            "type": "device",
+            "risk": "LOW"
+          },
+          {
+            "id": "ip:192.0.2.1",
+            "label": "192.0.2.1",
+            "type": "ip",
+            "risk": "LOW"
+          },
+          {
+            "id": "merch:acc_crypto_exchange",
+            "label": "acc_crypto_exchange",
+            "type": "merchant",
+            "risk": "LOW"
+          }
+        ],
+        "links": [
+          {
+            "source": "acc:acc_tor_73",
+            "target": "dev:fp_default",
+            "relation": "used_device"
+          },
+          {
+            "source": "acc:acc_tor_73",
+            "target": "ip:192.0.2.1",
+            "relation": "originated_from"
+          },
+          {
+            "source": "acc:acc_tor_73",
+            "target": "merch:acc_crypto_exchange",
+            "relation": "transacted_with"
+          }
+        ]
+      }
+    },
+    "time_analysis": {
+      "transaction_hour": 13,
+      "transaction_day_of_week": 6,
+      "local_time_formatted": "2026-10-25 13:38:48",
+      "timezone": "Europe/Berlin",
+      "is_night_transaction": false,
+      "is_weekend": true,
+      "account_typical_hours": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ],
+      "hour_anomaly": false,
+      "time_since_last_txn_mins": null,
+      "burst_count_5m": 1,
+      "hourly_distribution_24h": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      "velocity_sparkline": []
+    },
+    "location_check": {
+      "account_registered_city": "Frankfurt",
+      "account_registered_country": "DE",
+      "account_registered_coordinates": {
+        "lat": 50.1109,
+        "lon": 8.6821
+      },
+      "transaction_city": "Frankfurt",
+      "transaction_country": "DE",
+      "transaction_coordinates": {
+        "lat": 50.1109,
+        "lon": 8.6821
+      },
+      "previous_transaction_coordinates": null,
+      "distance_km": 0.0,
+      "is_international": false,
+      "is_impossible_travel": false,
+      "travel_distance_km": 0.0,
+      "travel_speed_kmh": 0.0,
+      "speed_threshold_kmh": 900.0,
+      "latest_location": {
+        "source": "carrier_cell_tower",
+        "source_label": "Telecom Carrier Cell Tower",
+        "is_simulated": true,
+        "city": "Frankfurt",
+        "country": "DE",
+        "coordinates": {
+          "lat": 50.1109,
+          "lon": 8.6821
+        },
+        "accuracy_meters": 90,
+        "freshness_seconds": 0.6,
+        "timestamp": "2026-10-25T12:38:48Z"
+      }
+    },
+    "pii_enrichment": {
+      "data_source": "MOCK_DEMO_DATA",
+      "enrichment_status": "FOUND",
+      "is_simulated": true,
+      "confidence": 0.84,
+      "source": "SIMULATED_CELL_TOWER+MOCK_IDENTITY_STORE",
+      "fetched_at": "2026-10-25T12:38:48Z",
+      "account_holder_name": "Viktor Vance (73)",
+      "account_holder_masked": "V****r V***e (**)",
+      "account_age_days": 8,
+      "linked_phone_verified": false,
+      "email_verified": false,
+      "sim_swap_last_7d": true,
+      "social_profile_risk_score": 0.88,
+      "social_reputation": "ESTABLISHED",
+      "device_fingerprint": "fp_demo_default",
+      "last_known_location": {
+        "source": "SIMULATED_CELL_TOWER",
+        "is_simulated": true,
+        "city": "Frankfurt",
+        "lat": 50.1109,
+        "lon": 8.6821,
+        "accuracy_meters": 90,
+        "timestamp": "2026-10-25T12:38:48Z"
+      },
+      "location_matches_transaction": true
+    },
+    "original_payload": {
+      "transaction_id": "tx_sim_1792931928578_3",
+      "account_id": "acc_tor_73",
+      "source_account": "acc_tor_73",
+      "destination_account": "acc_crypto_exchange",
+      "timestamp": "2026-10-25T12:38:48Z",
+      "amount": 250.0,
+      "currency": "USD",
+      "txn_type": "WIRE",
+      "merchant": "acc_crypto_exchange",
+      "merchant_category": "WIRE",
+      "transaction_city": "Frankfurt",
+      "transaction_country": "DE",
+      "rule_score": 1.0,
+      "ml_score": 0.8602,
+      "total_risk": 1.0,
+      "risk_score": 100,
+      "decision": "BLOCK",
+      "action": "BLOCK",
+      "status": "QUARANTINED",
+      "http_status": 202,
+      "triggered_rules": [
+        "AMOUNT_ANOMALY",
+        "CHANNEL_RISK",
+        "ORIGIN_TOR",
+        "TOR_EXIT_NODE",
+        "NEW_ACCOUNT",
+        "UNVERIFIED_CONTACT",
+        "SIM_SWAP_DETECTED"
+      ],
+      "flags": [
+        "AMOUNT_ANOMALY",
+        "CHANNEL_RISK",
+        "ORIGIN_TOR",
+        "TOR_EXIT_NODE",
+        "NEW_ACCOUNT",
+        "UNVERIFIED_CONTACT",
+        "SIM_SWAP_DETECTED"
+      ],
+      "score_breakdown": [
+        {
+          "rule": "AMOUNT_ANOMALY",
+          "points": 40,
+          "category": "HIGH"
+        },
+        {
+          "rule": "CHANNEL_RISK",
+          "points": 40,
+          "category": "HIGH"
+        },
+        {
+          "rule": "ORIGIN_TOR",
+          "points": 20,
+          "category": "MEDIUM"
+        },
+        {
+          "rule": "TOR_EXIT_NODE",
+          "points": 25,
+          "category": "HIGH"
+        },
+        {
+          "rule": "NEW_ACCOUNT",
+          "points": 10,
+          "category": "LOW"
+        },
+        {
+          "rule": "UNVERIFIED_CONTACT",
+          "points": 5,
+          "category": "LOW"
+        },
+        {
+          "rule": "SIM_SWAP_DETECTED",
+          "points": 25,
+          "category": "HIGH"
+        }
+      ],
+      "attributes": {
+        "device_fingerprint": "fp_demo_default",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/115.0",
+        "browser": "Chrome 122",
+        "os": "Windows 11",
+        "screen_resolution": "1920x1080",
+        "session_id": "sess_tor_tx_sim_1",
+        "payment_channel": "ONLINE_WEB",
+        "merchant_category_code": "5411",
+        "currency": "USD",
+        "is_new_device": false,
+        "is_new_beneficiary": false,
+        "timezone_mismatch": false
+      },
+      "origin": {
+        "country": "DE",
+        "city": "Frankfurt",
+        "region": "HE",
+        "isp": "Tor Exit Node / Zwiebelfreunde",
+        "asn": "AS206238 Freedom & Privacy Network",
+        "connection_type": "tor",
+        "is_vpn": false,
+        "is_proxy": true,
+        "is_tor": true,
+        "is_datacenter": true,
+        "coordinates": {
+          "lat": 50.1109,
+          "lon": 8.6821
+        },
+        "timezone": "Europe/Berlin",
+        "ip_address": "185.220.101.1",
+        "threat_level": "CRITICAL"
+      },
+      "traceback": {
+        "account_transaction_count": 1,
+        "previous_transaction_id": null,
+        "previous_transaction_ts": null,
+        "previous_amount": 0.0,
+        "previous_merchant": "",
+        "previous_location": "",
+        "chain_risk_score": 100.0,
+        "velocity_1hr": 1,
+        "velocity_24hr": 1,
+        "velocity_7d": 1,
+        "amount_delta_pct": 0.0,
+        "amount_zscore": null,
+        "entity_graph": {
+          "nodes": [
+            {
+              "id": "acc:acc_tor_73",
+              "label": "acc_tor_73",
+              "type": "account",
+              "risk": "LOW"
+            },
+            {
+              "id": "dev:fp_default",
+              "label": "fp_default",
+              "type": "device",
+              "risk": "LOW"
+            },
+            {
+              "id": "ip:192.0.2.1",
+              "label": "192.0.2.1",
+              "type": "ip",
+              "risk": "LOW"
+            },
+            {
+              "id": "merch:acc_crypto_exchange",
+              "label": "acc_crypto_exchange",
+              "type": "merchant",
+              "risk": "LOW"
+            }
+          ],
+          "links": [
+            {
+              "source": "acc:acc_tor_73",
+              "target": "dev:fp_default",
+              "relation": "used_device"
+            },
+            {
+              "source": "acc:acc_tor_73",
+              "target": "ip:192.0.2.1",
+              "relation": "originated_from"
+            },
+            {
+              "source": "acc:acc_tor_73",
+              "target": "merch:acc_crypto_exchange",
+              "relation": "transacted_with"
+            }
+          ]
+        }
+      },
+      "time_analysis": {
+        "transaction_hour": 13,
+        "transaction_day_of_week": 6,
+        "local_time_formatted": "2026-10-25 13:38:48",
+        "timezone": "Europe/Berlin",
+        "is_night_transaction": false,
+        "is_weekend": true,
+        "account_typical_hours": [
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "hour_anomaly": false,
+        "time_since_last_txn_mins": null,
+        "burst_count_5m": 1,
+        "hourly_distribution_24h": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0,
+          0,
+          0
+        ],
+        "velocity_sparkline": []
+      },
+      "location_check": {
+        "account_registered_city": "Frankfurt",
+        "account_registered_country": "DE",
+        "account_registered_coordinates": {
+          "lat": 50.1109,
+          "lon": 8.6821
+        },
+        "transaction_city": "Frankfurt",
+        "transaction_country": "DE",
+        "transaction_coordinates": {
+          "lat": 50.1109,
+          "lon": 8.6821
+        },
+        "previous_transaction_coordinates": null,
+        "distance_km": 0.0,
+        "is_international": false,
+        "is_impossible_travel": false,
+        "travel_distance_km": 0.0,
+        "travel_speed_kmh": 0.0,
+        "speed_threshold_kmh": 900.0,
+        "latest_location": {
+          "source": "carrier_cell_tower",
+          "source_label": "Telecom Carrier Cell Tower",
+          "is_simulated": true,
+          "city": "Frankfurt",
+          "country": "DE",
+          "coordinates": {
+            "lat": 50.1109,
+            "lon": 8.6821
+          },
+          "accuracy_meters": 90,
+          "freshness_seconds": 0.6,
+          "timestamp": "2026-10-25T12:38:48Z"
+        }
+      },
+      "pii_enrichment": {
+        "data_source": "MOCK_DEMO_DATA",
+        "enrichment_status": "FOUND",
+        "is_simulated": true,
+        "confidence": 0.84,
+        "source": "SIMULATED_CELL_TOWER+MOCK_IDENTITY_STORE",
+        "fetched_at": "2026-10-25T12:38:48Z",
+        "account_holder_name": "Viktor Vance (73)",
+        "account_holder_masked": "V****r V***e (**)",
+        "account_age_days": 8,
+        "linked_phone_verified": false,
+        "email_verified": false,
+        "sim_swap_last_7d": true,
+        "social_profile_risk_score": 0.88,
+        "social_reputation": "ESTABLISHED",
+        "device_fingerprint": "fp_demo_default",
+        "last_known_location": {
+          "source": "SIMULATED_CELL_TOWER",
+          "is_simulated": true,
+          "city": "Frankfurt",
+          "lat": 50.1109,
+          "lon": 8.6821,
+          "accuracy_meters": 90,
+          "timestamp": "2026-10-25T12:38:48Z"
+        },
+        "location_matches_transaction": true
+      },
+      "execution_ms": 209.47
+    },
+    "auto_release_after": "2026-10-26T12:38:48Z",
+    "sla_due_at": "2026-10-25T13:38:48Z",
+    "analyst_notes": "Blocked in test",
+    "action_history": [],
+    "ttl_epoch": 1793536728,
+    "ttl_expiry": 1795523928,
+    "updated_ts": "2026-10-25T12:38:48Z"
   }
 ]

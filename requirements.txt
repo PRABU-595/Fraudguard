@@ -1,0 +1,7 @@
+# FraudGuard Production Dependencies
+# Note: Core HTTP server, Threat Map API, and Rule Engine run on 100% Python Standard Library.
+# Optional ML & Cloud Connectors:
+joblib>=1.3.0
+scikit-learn>=1.3.0
+pandas>=2.0.0
+boto3>=1.28.0
