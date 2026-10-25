@@ -78,7 +78,7 @@ class SimulatorEngine:
                 "session_id": f"sess_{tx_id[:10]}"
             }
 
-        elif scenario in ("TOR_ATTACK", "TOR"):
+        elif scenario in ("TOR_ATTACK", "TOR", "TOR_EXIT_NODE"):
             return {
                 "transaction_id": tx_id,
                 "source_account": f"acc_tor_{random.randint(10, 99)}",
@@ -199,6 +199,8 @@ class SimulatorEngine:
     def get_status(self) -> Dict[str, Any]:
         return {
             "active": self.is_running,
+            "running": self.is_running,
+            "is_running": self.is_running,
             "tps": self.tps,
             "available_scenarios": ["NORMAL", "IMPOSSIBLE_TRAVEL", "TOR_ATTACK", "VELOCITY_BURST", "NIGHT_FRAUD"]
         }

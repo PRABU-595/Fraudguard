@@ -482,6 +482,10 @@ class DBClient:
                 for item in q_logs:
                     if item.get("transaction_id") == transaction_id:
                         item["status"] = new_status
+                        if new_status in ("QUARANTINED", "CONFIRMED_FRAUD"):
+                            item["decision"] = "BLOCK"
+                        elif new_status == "RELEASED":
+                            item["decision"] = "ALLOW"
                         if analyst_notes is not None:
                             item["analyst_notes"] = analyst_notes
                         item["updated_ts"] = now_iso
@@ -490,3 +494,58 @@ class DBClient:
                 if updated_item:
                     self._write_json_list(self.quarantine_fallback_path, q_logs, self._mem_quarantine)
                 return updated_item
+
+    def update_main_transaction_status(
+        self,
+        transaction_id: str,
+        new_status: str,
+        new_decision: str = "BLOCK",
+        risk_score: Optional[float] = None,
+        analyst_notes: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Update status, decision, and risk score of a transaction in the main transactions table."""
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        if self.use_dynamodb and self.main_table is not None:
+            try:
+                update_expr = "SET #st = :s, #dec = :d, updated_ts = :t"
+                expr_names = {"#st": "status", "#dec": "decision"}
+                expr_vals: Dict[str, Any] = {
+                    ":s": new_status,
+                    ":d": new_decision,
+                    ":t": now_iso
+                }
+                if risk_score is not None:
+                    update_expr += ", risk_score = :r"
+                    expr_vals[":r"] = Decimal(str(round(risk_score, 1)))
+                resp = self.main_table.update_item(
+                    Key={"transaction_id": str(transaction_id)},
+                    UpdateExpression=update_expr,
+                    ExpressionAttributeNames=expr_names,
+                    ExpressionAttributeValues=expr_vals,
+                    ReturnValues="ALL_NEW"
+                )
+                return _from_dynamodb_safe(resp.get("Attributes"))
+            except Exception:
+                pass
+        with self._lock:
+            main_logs = self._read_json_list(self.fallback_path, self._mem_main)
+            updated_item = None
+            for item in main_logs:
+                if item.get("transaction_id") == transaction_id or item.get("id") == transaction_id:
+                    item["status"] = new_status
+                    item["decision"] = new_decision
+                    if risk_score is not None:
+                        item["risk_score"] = risk_score
+                        item["risk_tier"] = "CRITICAL" if risk_score >= 80 else ("ELEVATED" if risk_score >= 40 else "NOMINAL")
+                    flags = list(item.get("flags") or [])
+                    if new_decision == "BLOCK" and "MANUAL_SOC_BLOCK" not in [str(f) for f in flags]:
+                        flags.append("MANUAL_SOC_BLOCK")
+                        item["flags"] = flags
+                    if analyst_notes:
+                        item["analyst_notes"] = analyst_notes
+                    item["updated_ts"] = now_iso
+                    updated_item = dict(item)
+                    break
+            if updated_item:
+                self._write_json_list(self.fallback_path, main_logs, self._mem_main)
+            return updated_item

@@ -42020,7 +42020,7 @@
     "ttl_epoch": 1793532891,
     "ttl_expiry": 1795520091,
     "analyst_notes": "Bulk review",
-    "updated_ts": "2026-10-25T12:38:46Z"
+    "updated_ts": "2026-10-25T13:41:52Z"
   },
   {
     "transaction_id": "tx_sim_1792928098247_3",
@@ -44732,5 +44732,16 @@
     "ttl_epoch": 1793536728,
     "ttl_expiry": 1795523928,
     "updated_ts": "2026-10-25T12:38:48Z"
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "account_id": "acc_test_bulk",
+    "amount": 500.0,
+    "risk_score": 95.0,
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "timestamp": "2026-10-25T13:41:52.609941+00:00",
+    "ttl_epoch": 1793540512,
+    "ttl_expiry": 1795527712
   }
 ]

@@ -48,6 +48,54 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [showSimulatorModal, setShowSimulatorModal] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(3);
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    title: string;
+    desc: string;
+    tier: "CRITICAL" | "WARNING" | "INFO" | "SUCCESS";
+    time: string;
+    tab: "ingestion" | "map" | "quarantine" | "accounts" | "analytics" | "config";
+    unread: boolean;
+  }>>([
+    {
+      id: "notif_1",
+      title: "Critical Impossible Travel Alert",
+      desc: "Account acc_travel_12 initiated transaction in London 3m after New York (1,420 km/h).",
+      tier: "CRITICAL",
+      time: "Just now",
+      tab: "quarantine",
+      unread: true
+    },
+    {
+      id: "notif_2",
+      title: "SLA Breach Imminent (14m remaining)",
+      desc: "Quarantined case CASE-1004 has exceeded 45 minutes in pending review queue.",
+      tier: "WARNING",
+      time: "4m ago",
+      tab: "quarantine",
+      unread: true
+    },
+    {
+      id: "notif_3",
+      title: "Tor Exit Relay Enforced",
+      desc: "High risk onion node 185.220.101.1 was automatically force-blocked via Rule TOR_EXIT_NODE.",
+      tier: "INFO",
+      time: "8m ago",
+      tab: "map",
+      unread: true
+    },
+    {
+      id: "notif_4",
+      title: "AWS SNS Alert Published",
+      desc: "SNS Topic fraudguard-critical-alerts successfully dispatched 2 critical security alerts.",
+      tier: "SUCCESS",
+      time: "15m ago",
+      tab: "analytics",
+      unread: false
+    }
+  ]);
   const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [simTps, setSimTps] = useState(stats?.tps || 2.0);
@@ -57,6 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const simModalRef = useRef<HTMLDivElement>(null);
   const hamburgerRef = useRef<HTMLDivElement>(null);
+  const notifDropdownRef = useRef<HTMLDivElement>(null);
 
   // Resize listener for exact responsive breakpoints
   useEffect(() => {
@@ -70,6 +119,9 @@ export const Header: React.FC<HeaderProps> = ({
     const handleClickOutside = (e: MouseEvent) => {
       if (userDropdownRef.current && !userDropdownRef.current.contains(e.target as Node)) {
         setShowUserDropdown(false);
+      }
+      if (notifDropdownRef.current && !notifDropdownRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
       }
       if (simModalRef.current && !simModalRef.current.contains(e.target as Node)) {
         setShowSimulatorModal(false);
@@ -276,7 +328,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="font-semibold text-white">Adversary Simulator</span>
                 </div>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/50 font-mono">
-                  ADMIN ONLY
+                  OPERATIONAL
                 </span>
               </div>
 
@@ -387,14 +439,98 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Notifications Bell */}
-        <button 
-          title="Notifications"
-          className="p-1.5 rounded-md hover:bg-surface-elevated text-muted hover:text-slate-200 transition relative shrink-0"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
-        </button>
+        {/* Notifications Bell with Interactive Alert Center Dropdown */}
+        <div className="relative shrink-0" ref={notifDropdownRef}>
+          <button 
+            title="Security Notifications & SOC Alerts"
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="p-1.5 rounded-md hover:bg-surface-elevated text-muted hover:text-slate-200 transition relative shrink-0 cursor-pointer"
+          >
+            <Bell className="h-4 w-4" />
+            {unreadNotifications > 0 && (
+              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-cyan-400 ring-2 ring-background animate-pulse"></span>
+            )}
+          </button>
+
+          {showNotifications && (
+            <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-xl bg-surface-elevated border border-border shadow-2xl z-50 text-xs overflow-hidden">
+              <div className="p-3 border-b border-border/80 flex items-center justify-between bg-surface-card/60">
+                <div className="flex items-center space-x-2">
+                  <span className="font-bold text-white text-xs">Security Alerts</span>
+                  {unreadNotifications > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-cyan-950 text-cyan-300 border border-cyan-800">
+                      {unreadNotifications} new
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2 text-[11px]">
+                  <button
+                    onClick={() => {
+                      setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+                      setUnreadNotifications(0);
+                    }}
+                    className="text-cyan-400 hover:text-cyan-300 hover:underline"
+                  >
+                    Mark read
+                  </button>
+                  <span className="text-slate-600">·</span>
+                  <button
+                    onClick={() => {
+                      setNotifications([]);
+                      setUnreadNotifications(0);
+                    }}
+                    className="text-slate-400 hover:text-slate-200"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-80 overflow-y-auto divide-y divide-border/60">
+                {notifications.length === 0 ? (
+                  <div className="p-6 text-center text-muted">
+                    <CheckCircle2 className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
+                    <span>No unread security alerts</span>
+                  </div>
+                ) : (
+                  notifications.map((n) => (
+                    <div
+                      key={n.id}
+                      onClick={() => {
+                        setActiveTab(n.tab);
+                        setShowNotifications(false);
+                      }}
+                      className={`p-3 hover:bg-surface-hover cursor-pointer transition flex items-start space-x-2.5 ${
+                        n.unread ? "bg-cyan-950/20" : ""
+                      }`}
+                    >
+                      <div className="mt-0.5 shrink-0">
+                        {n.tier === "CRITICAL" ? (
+                          <AlertTriangle className="h-4 w-4 text-red-400" />
+                        ) : n.tier === "WARNING" ? (
+                          <AlertTriangle className="h-4 w-4 text-amber-400" />
+                        ) : n.tier === "SUCCESS" ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                        ) : (
+                          <Radio className="h-4 w-4 text-cyan-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className={`font-semibold text-xs truncate ${n.unread ? "text-white" : "text-slate-300"}`}>
+                            {n.title}
+                          </span>
+                          <span className="text-[10px] text-muted shrink-0 font-mono">{n.time}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">{n.desc}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* User Menu: Avatar + Name + Role Pill ("Analyst"). Details in dropdown. No top clipping. */}
         <div className="relative shrink-0" ref={userDropdownRef}>

@@ -2406,5 +2406,27 @@
     "operator": "Sarah Chen",
     "role": "analyst",
     "timestamp": "2026-10-25T12:38:49Z"
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "action": "RELEASE",
+    "previous_status": "QUARANTINED",
+    "new_status": "RELEASED",
+    "operator": "admin_user",
+    "role": "admin",
+    "reason": "Bulk review",
+    "notes": "Bulk review",
+    "timestamp": "2026-10-25T13:41:52Z"
+  },
+  {
+    "transaction_id": "tx_soc_test_block_999",
+    "action": "CONFIRM_FRAUD",
+    "previous_status": "APPROVED",
+    "new_status": "CONFIRMED_FRAUD",
+    "operator": "soc_lead_01",
+    "role": "admin",
+    "reason": "Operator manual block test",
+    "notes": "Testing block and quarantine reflection",
+    "timestamp": "2026-10-25T15:37:17Z"
   }
 ]

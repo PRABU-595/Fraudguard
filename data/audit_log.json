@@ -129818,5 +129818,18 @@
     "_ts": "2026-10-25T12:38:49Z",
     "ttl_epoch": 1800707929,
     "ttl_expiry": 1795523929
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "account_id": "acc_test_bulk",
+    "amount": 500.0,
+    "risk_score": 95.0,
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "timestamp": "2026-10-25T13:41:52.609941+00:00",
+    "id": "tx_test_bulk_high_risk",
+    "_ts": "2026-10-25T13:41:52Z",
+    "ttl_epoch": 1800711712,
+    "ttl_expiry": 1795527712
   }
 ]

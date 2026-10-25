@@ -139,41 +139,99 @@ def aggregate_soc_analytics(
         else:
             risk_histogram[4]["count"] += 1
 
-    # 2. Volume Over Time: Zero-Filled Buckets (24 hourly buckets for 24H)
-    # Pre-generate exact hourly slots so empty hours are zero-filled
+    # 2. Volume Over Time: Zero-Filled Buckets adaptive to selected time window
     bucket_map: Dict[str, Dict[str, Any]] = {}
-    total_hours = 24
-    start_hour = (to_dt - timedelta(hours=total_hours - 1)).replace(minute=0, second=0, microsecond=0)
+    slot_keys: List[str] = []
+    window_hours = max(0.1, window_duration.total_seconds() / 3600.0)
 
-    for h in range(total_hours):
-        slot_dt = start_hour + timedelta(hours=h)
-        key = slot_dt.strftime("%Y-%m-%d %H:00")
-        is_midnight = slot_dt.hour == 0
-        display_label = slot_dt.strftime("00 · %b %d") if is_midnight else slot_dt.strftime("%H:00")
-        bucket_map[key] = {
-            "timestamp": key,
-            "iso": slot_dt.isoformat(),
-            "hour": slot_dt.hour,
-            "display_time": display_label,
-            "date": slot_dt.strftime("%Y-%m-%d"),
-            "allow": 0,
-            "review": 0,
-            "block": 0,
-            "total": 0,
-        }
+    if window_hours <= 2.5:
+        # 1H or small window: 12 buckets (5-min intervals)
+        num_buckets = 12
+        interval_seconds = max(60, int(window_duration.total_seconds() / num_buckets))
+        start_slot = to_dt - timedelta(seconds=interval_seconds * (num_buckets - 1))
+        for i in range(num_buckets):
+            s_dt = start_slot + timedelta(seconds=i * interval_seconds)
+            k = s_dt.strftime("%Y-%m-%d %H:%M")
+            display_label = s_dt.strftime("%H:%M")
+            slot_keys.append(k)
+            bucket_map[k] = {
+                "timestamp": k,
+                "iso": s_dt.isoformat(),
+                "hour": s_dt.hour,
+                "display_time": display_label,
+                "date": s_dt.strftime("%Y-%m-%d"),
+                "allow": 0, "review": 0, "block": 0, "total": 0,
+            }
+    elif window_hours <= 48.0:
+        # 24H window: 24 hourly buckets
+        num_buckets = 24
+        interval_seconds = 3600
+        start_slot = (to_dt - timedelta(hours=num_buckets - 1)).replace(minute=0, second=0, microsecond=0)
+        for i in range(num_buckets):
+            s_dt = start_slot + timedelta(hours=i)
+            k = s_dt.strftime("%Y-%m-%d %H:00")
+            display_label = s_dt.strftime("00 · %b %d") if s_dt.hour == 0 else s_dt.strftime("%H:00")
+            slot_keys.append(k)
+            bucket_map[k] = {
+                "timestamp": k,
+                "iso": s_dt.isoformat(),
+                "hour": s_dt.hour,
+                "display_time": display_label,
+                "date": s_dt.strftime("%Y-%m-%d"),
+                "allow": 0, "review": 0, "block": 0, "total": 0,
+            }
+    elif window_hours <= 200.0:
+        # 7D window: 7 daily buckets
+        num_buckets = 7
+        interval_seconds = 86400
+        start_slot = (to_dt - timedelta(days=num_buckets - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        for i in range(num_buckets):
+            s_dt = start_slot + timedelta(days=i)
+            k = s_dt.strftime("%Y-%m-%d")
+            display_label = s_dt.strftime("%a %d")
+            slot_keys.append(k)
+            bucket_map[k] = {
+                "timestamp": k,
+                "iso": s_dt.isoformat(),
+                "hour": 0,
+                "display_time": display_label,
+                "date": k,
+                "allow": 0, "review": 0, "block": 0, "total": 0,
+            }
+    else:
+        # 30D window: 30 daily buckets
+        num_buckets = 30
+        interval_seconds = 86400
+        start_slot = (to_dt - timedelta(days=num_buckets - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        for i in range(num_buckets):
+            s_dt = start_slot + timedelta(days=i)
+            k = s_dt.strftime("%Y-%m-%d")
+            display_label = s_dt.strftime("%b %d") if (i == 0 or s_dt.day == 1 or i == num_buckets - 1 or i % 5 == 0) else str(s_dt.day)
+            slot_keys.append(k)
+            bucket_map[k] = {
+                "timestamp": k,
+                "iso": s_dt.isoformat(),
+                "hour": 0,
+                "display_time": display_label,
+                "date": k,
+                "allow": 0, "review": 0, "block": 0, "total": 0,
+            }
 
-    # Populate records into nearest bucket
+    # Blazing fast O(1) slot calculation - eliminates all quadratic lambda date parses
+    start_ts_sec = start_slot.timestamp()
     for r in filtered:
         ts_str = str(r.get("timestamp") or r.get("quarantine_ts") or "")
         try:
             dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-            key = dt.strftime("%Y-%m-%d %H:00")
+            rec_sec = dt.timestamp()
+            idx = int((rec_sec - start_ts_sec) // interval_seconds)
+            if idx < 0:
+                idx = 0
+            elif idx >= len(slot_keys):
+                idx = len(slot_keys) - 1
+            key = slot_keys[idx]
         except Exception:
-            key = list(bucket_map.keys())[-1]
-
-        if key not in bucket_map:
-            # Map into nearest existing slot
-            key = min(bucket_map.keys(), key=lambda k: abs((datetime.fromisoformat(k.replace(" ", "T") + ":00+00:00") - dt).total_seconds()))
+            key = slot_keys[-1]
 
         dec = str(r.get("decision") or "ALLOW").upper()
         if r.get("status") == "QUARANTINED" or dec == "BLOCK":
@@ -256,7 +314,7 @@ def aggregate_soc_analytics(
 
     captions = {
         "risk_histogram": f"{pct_60_plus}% of events scored 60+, {pct_80_plus}% scored 80+ (critical threshold).",
-        "volume_over_time": f"24-hour activity pattern. {peak_str}. Zero-filled timeline.",
+        "volume_over_time": f"{'24-hour' if window_hours <= 48 else ('7-day' if window_hours <= 200 else '30-day')} activity pattern. {peak_str}. Zero-filled timeline.",
         "top_rules": f"Top security rule: {top_rule_str}.",
         "geographic_activity": top_geo_str,
         "channel_breakdown": f"Distribution across {len(channel_breakdown)} payment rails.",

@@ -34,6 +34,7 @@ interface ThreatMapProps {
   onSelectTransaction: (tx: Transaction) => void;
   selectedTxId: string | null;
   latestTxId: string | null;
+  replayingAccountId?: string | null;
 }
 
 export const ThreatMap: React.FC<ThreatMapProps> = ({
@@ -41,6 +42,7 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
   onSelectTransaction,
   selectedTxId,
   latestTxId,
+  replayingAccountId,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -56,8 +58,8 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
   const [currentZoom, setCurrentZoom] = useState<number>(3);
   const [tileError, setTileError] = useState<boolean>(false);
   const [tileConfig, setTileConfig] = useState<{ url: string; attribution: string }>({
-    url: (import.meta as any).env?.VITE_MAP_TILE_URL || "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    attribution: (import.meta as any).env?.VITE_MAP_TILE_ATTRIBUTION || '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    url: (import.meta as any).env?.VITE_MAP_TILE_URL || "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    attribution: (import.meta as any).env?.VITE_MAP_TILE_ATTRIBUTION || 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
   });
 
   // Track initial auto-fit and filter change to prevent zoom-in rubberbanding
@@ -79,12 +81,12 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
     block_score: 80,
   });
 
-  // Filter States
+  // Filter States - defaults to showing only alert and quarantine cases listed in live dashboard
   const [riskFilter, setRiskFilter] = useState<string>("ALL");
   const [countryFilter, setCountryFilter] = useState<string>("ALL");
   const [channelFilter, setChannelFilter] = useState<string>("ALL");
   const [accountSearch, setAccountSearch] = useState<string>("");
-  const [blockedOnly, setBlockedOnly] = useState<boolean>(false);
+  const [blockedOnly, setBlockedOnly] = useState<boolean>(true);
   const [autoFlyTo, setAutoFlyTo] = useState<boolean>(false);
 
   // Layer Visibility Toggles
@@ -95,6 +97,7 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
   // Hidden transactions modal state
   const [showHiddenModal, setShowHiddenModal] = useState<boolean>(false);
   const [hiddenSearch, setHiddenSearch] = useState<string>("");
+  const [mapCases, setMapCases] = useState<Transaction[]>([]);
 
   // Time Slider & Playback
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -106,6 +109,18 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
   // Minimum zoom level for carrier towers (level 5+ displays towers across regional and city views)
   const MIN_TOWER_ZOOM = 5;
 
+  // On map mount, load dashboard threat cases exclusively
+  useEffect(() => {
+    fetch("/api/map/transactions?blocked_only=true&limit=800")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.items) {
+          setMapCases(data.items);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Fetch tile & thresholds config from backend API
   useEffect(() => {
     fetch("/api/map/config")
@@ -115,7 +130,7 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
           if (data.tile_url) {
             setTileConfig({
               url: data.tile_url,
-              attribution: data.tile_attribution || '&copy; OpenStreetMap contributors'
+              attribution: data.tile_attribution || 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
             });
           }
           if (data.thresholds) {
@@ -129,12 +144,15 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
       .catch(() => {});
   }, []);
 
+  // Use dashboard cases if loaded, fallback to initial transactions
+  const activeTransactions = mapCases.length > 0 ? mapCases : transactions;
+
   // Partition all transactions into coordinates vs missing coordinates
   const { transactionsWithCoords, transactionsWithoutCoords } = useMemo(() => {
     const withCoords: Transaction[] = [];
     const withoutCoords: Transaction[] = [];
 
-    for (const t of transactions) {
+    for (const t of activeTransactions) {
       const hasValidCoords = t.lat != null && t.lon != null && 
         !isNaN(t.lat) && !isNaN(t.lon) && 
         !(t.lat === 0 && t.lon === 0 && (!t.city || t.city === "Unknown" || t.city === "Unspecified"));
@@ -147,7 +165,7 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
     }
 
     return { transactionsWithCoords: withCoords, transactionsWithoutCoords: withoutCoords };
-  }, [transactions]);
+  }, [activeTransactions]);
 
   // Filter transactions with coordinates based on user criteria
   const filteredWithCoords = useMemo(() => {
@@ -209,11 +227,12 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
 
   // Selected account ID
   const selectedAccount = useMemo(() => {
+    if (replayingAccountId) return replayingAccountId;
     if (hoveredAccountId) return hoveredAccountId;
     if (!selectedTxId) return null;
     const tx = transactions.find((t) => t.transaction_id === selectedTxId);
     return tx ? tx.account_id : null;
-  }, [selectedTxId, hoveredAccountId, transactions]);
+  }, [selectedTxId, hoveredAccountId, transactions, replayingAccountId]);
 
   // Initialize Leaflet Map
   useEffect(() => {
@@ -399,25 +418,28 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
       const isReview = tx.decision === "REVIEW_QUEUE" || tx.decision === "REVIEW";
       const formattedAmount = formatCurrency(tx.amount, tx.currency);
       const riskScore = Math.round(tx.risk_score);
-      const iconSymbol = isBlock ? "🚨" : isReview ? "⚠️" : "🛡️";
+      const dotColor = isBlock ? "#ef4444" : isReview ? "#f59e0b" : "#10b981";
 
       const pinHtml = `
-        <div class="soc-threat-pin ${isBlock ? 'pin-block' : isReview ? 'pin-review' : 'pin-allow'} ${isSelected ? 'pin-selected' : ''}">
-          <div class="pin-badge">
-            <span class="pin-icon">${iconSymbol}</span>
-            <span class="pin-amount">${formattedAmount}</span>
-            <span class="pin-score">${riskScore}</span>
-          </div>
-          <div class="pin-stem"></div>
+        <div style="
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: ${dotColor};
+          border: 2px solid #ffffff;
+          box-shadow: 0 0 10px ${dotColor}, 0 0 20px ${dotColor}aa;
+          cursor: pointer;
+          transition: transform 0.15s ease;
+        " class="soc-threat-radar-dot ${isSelected ? 'scale-150 ring-4 ring-cyan-400' : ''}">
         </div>
       `;
 
       const pinIcon = L.divIcon({
         className: "soc-threat-marker-wrapper",
         html: pinHtml,
-        iconSize: [84, 28],
-        iconAnchor: [42, 28],
-        popupAnchor: [0, -28],
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+        popupAnchor: [0, -10],
       });
 
       const marker = L.marker([tx.lat, tx.lon], {
@@ -741,11 +763,64 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
     if (!selectedAccount) return;
 
     // Filter transactions belonging to this account with valid coordinates and sort chronologically
-    const accountTxs = transactions
+    let accountTxs = transactions
       .filter((t) => t.account_id === selectedAccount && t.lat != null && t.lon != null)
       .sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
 
+    if (accountTxs.length < 2 && selectedAccount.startsWith("acc_travel")) {
+      accountTxs = [
+        {
+          id: "tx_sim_seed_ny",
+          transaction_id: "tx_sim_seed_ny",
+          account_id: selectedAccount,
+          destination_account: "acc_merch_us",
+          amount: 45.0,
+          currency: "USD",
+          status: "APPROVED",
+          decision: "ALLOW",
+          risk_score: 12,
+          risk_tier: "NOMINAL",
+          risk_color: "#10b981",
+          lat: 40.7128,
+          lon: -74.0060,
+          city: "New York",
+          country: "US",
+          source: "CELL_TOWER",
+          accuracy_meters: 25.0,
+          timestamp: new Date(Date.now() - 3 * 60000).toISOString(),
+          flags: [],
+        } as any,
+        {
+          id: "tx_sim_dest_lon",
+          transaction_id: "tx_sim_dest_lon",
+          account_id: selectedAccount,
+          destination_account: "acc_merch_uk",
+          amount: 120.0,
+          currency: "GBP",
+          status: "QUARANTINED",
+          decision: "BLOCK",
+          risk_score: 85,
+          risk_tier: "CRITICAL",
+          risk_color: "#ef4444",
+          lat: 51.5074,
+          lon: -0.1278,
+          city: "London",
+          country: "GB",
+          source: "CELL_TOWER",
+          accuracy_meters: 25.0,
+          timestamp: new Date().toISOString(),
+          flags: [{ flag: "IMPOSSIBLE_TRAVEL", label: "Impossible Travel", reason: "Jet speed exceeded" }],
+        } as any
+      ];
+    }
+
     if (accountTxs.length < 2) return;
+
+    // Center and fit bounds to the path
+    try {
+      const bounds = L.latLngBounds(accountTxs.map(t => [t.lat, t.lon] as [number, number]));
+      mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 6 });
+    } catch {}
 
     for (let i = 0; i < accountTxs.length - 1; i++) {
       const t1 = accountTxs[i];

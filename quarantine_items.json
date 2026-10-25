@@ -1,0 +1,49 @@
+[
+  {
+    "transaction_id": "tx_soc_test_block_999",
+    "account_id": "acc_soc_test_999",
+    "source_account": "acc_soc_test_999",
+    "destination_account": "acc_merchant",
+    "timestamp": "2026-10-25T15:37:17Z",
+    "quarantine_ts": "2026-10-25T15:37:17Z",
+    "amount": 499.99,
+    "txn_type": "CREDIT",
+    "merchant": "General Merchant",
+    "merchant_category": "retail",
+    "reason_codes": [
+      "MANUAL_SOC_BLOCK"
+    ],
+    "flags": [
+      "MANUAL_SOC_BLOCK"
+    ],
+    "triggered_rules": [
+      "MANUAL_SOC_BLOCK"
+    ],
+    "risk_score": 92,
+    "total_risk": 0.92,
+    "decision": "BLOCK",
+    "action": "BLOCK",
+    "status": "CONFIRMED_FRAUD",
+    "origin": null,
+    "traceback": null,
+    "time_analysis": null,
+    "location_check": null,
+    "pii_enrichment": null,
+    "original_payload": {
+      "transaction_id": "tx_soc_test_block_999",
+      "amount": 499.99,
+      "account_id": "acc_soc_test_999",
+      "timestamp": "2026-10-25T15:37:17Z",
+      "decision": "ALLOW",
+      "status": "APPROVED",
+      "risk_score": 15.0
+    },
+    "auto_release_after": "2026-10-26T15:37:17Z",
+    "sla_due_at": "2026-10-25T16:37:17Z",
+    "analyst_notes": "Testing block and quarantine reflection",
+    "action_history": [],
+    "ttl_epoch": 1793547437,
+    "ttl_expiry": 1795534637,
+    "updated_ts": "2026-10-25T15:37:17Z"
+  }
+]

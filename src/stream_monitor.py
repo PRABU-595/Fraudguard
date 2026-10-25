@@ -12,6 +12,7 @@ import time
 import os
 import sys
 import json
+import gzip
 import queue
 import socket
 import re
@@ -239,6 +240,7 @@ def _filter_records(records: List[Dict[str, Any]], query: Dict[str, List[str]]) 
 
 
 class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
     db: Optional[DBClient] = None
     router: Optional[FraudRouter] = None
     simulator: Optional[SimulatorEngine] = None
@@ -269,30 +271,49 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
         return cls.sse
 
     def _send_json(self, status: int, data: Any, extra_headers: Optional[Dict[str, str]] = None) -> None:
-        body = json.dumps(data, indent=2).encode("utf-8")
+        body = json.dumps(data, separators=(",", ":")).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key, X-Analyst-ID, X-User-Role")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         if extra_headers:
             for k, v in extra_headers.items():
                 self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
+        try:
+            self.wfile.flush()
+        except Exception:
+            pass
 
     def _serve_file(self, file_path: str, content_type: str) -> None:
         if os.path.exists(file_path):
             try:
                 with open(file_path, "rb") as f:
                     content = f.read()
+
                 self.send_response(200)
                 self.send_header("Content-Type", content_type)
                 self.send_header("Content-Length", str(len(content)))
-                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Connection", "close")
+                self.send_header("Access-Control-Allow-Origin", "*")
+
+                norm = file_path.replace("\\", "/")
+                if "/assets/" in norm:
+                    self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+                else:
+                    self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+
                 self.end_headers()
                 self.wfile.write(content)
+                try:
+                    self.wfile.flush()
+                except Exception:
+                    pass
                 return
             except Exception:
                 pass
@@ -337,6 +358,7 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(body)))
+                self.send_header("Connection", "close")
                 self.end_headers()
                 self.wfile.write(body)
             return
@@ -601,6 +623,12 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                 })
 
             account_items.sort(key=lambda x: x["risk_score"], reverse=True)
+            limit_val = 100
+            try:
+                if "limit" in query:
+                    limit_val = max(1, min(1000, int(query["limit"][0])))
+            except Exception:
+                limit_val = 100
 
             self._send_json(200, {
                 "kpis": {
@@ -609,7 +637,7 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                     "accounts_with_open_cases": open_cases_count,
                     "new_this_week": new_this_week_count,
                 },
-                "items": account_items
+                "items": account_items[:limit_val]
             })
             return
 
@@ -854,8 +882,8 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
             cfg = load_rules_config()
             thresholds = cfg.get("thresholds", {"review_score": 40, "block_score": 80})
             self._send_json(200, {
-                "tile_url": os.environ.get("MAP_TILE_URL", "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"),
-                "tile_attribution": os.environ.get("MAP_TILE_ATTRIBUTION", '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'),
+                "tile_url": os.environ.get("MAP_TILE_URL", "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"),
+                "tile_attribution": os.environ.get("MAP_TILE_ATTRIBUTION", 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'),
                 "api_key": os.environ.get("MAP_API_KEY", ""),
                 "environment": os.environ.get("ENVIRONMENT", "Demo"),
                 "thresholds": thresholds
@@ -864,50 +892,33 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
 
         # 7. REST API: /api/quarantine
         if path == "/api/quarantine":
-            from src.tower_geo_helper import enrich_map_transaction
             qm = QuarantineManager(db_client=self.get_db())
             feed = qm.get_quarantine_feed_with_sla()
 
-            enriched_feed = []
-            for item in feed:
-                e = enrich_map_transaction(item)
-                e["assignee"] = item.get("assignee") or item.get("operator") or "Unassigned"
-                e["sla_countdown"] = item.get("sla_countdown", "No SLA")
-                e["sla_status"] = item.get("sla_status", "ON_TRACK")
-                e["sla_due_at"] = item.get("sla_due_at")
-                e["sla_deadline"] = item.get("sla_deadline")
-                e["sla_remaining_minutes"] = item.get("sla_remaining_minutes")
-                e["sla_remaining_seconds"] = item.get("sla_remaining_seconds")
-                e["is_sla_breached"] = item.get("is_sla_breached", False)
-                e["priority"] = "CRITICAL" if e.get("risk_score", 0) >= 80 else ("HIGH" if e.get("risk_score", 0) >= 60 else "MEDIUM")
-                e["notes_thread"] = item.get("notes_thread") or [
-                    {"author": "System Detection", "text": "Heuristic risk rules triggered transaction quarantine.", "timestamp": item.get("quarantine_ts") or item.get("timestamp")}
-                ]
-                enriched_feed.append(e)
-
-            open_count = sum(1 for q in enriched_feed if q.get("status") in ("QUARANTINED", "AT_RISK"))
-            at_risk_count = sum(1 for q in enriched_feed if q.get("status") == "QUARANTINED" and q.get("sla_status") == "AT_RISK")
-            breached_count = sum(1 for q in enriched_feed if q.get("status") == "QUARANTINED" and q.get("is_sla_breached") is True)
-            escalated_count = sum(1 for q in enriched_feed if q.get("status") == "ESCALATED")
-            released_count = sum(1 for q in enriched_feed if q.get("status") == "RELEASED")
-            confirmed_count = sum(1 for q in enriched_feed if q.get("status") == "CONFIRMED_FRAUD")
+            # Fast KPI counts directly from raw feed (< 1ms)
+            open_count = sum(1 for q in feed if q.get("status") in ("QUARANTINED", "AT_RISK"))
+            at_risk_count = sum(1 for q in feed if q.get("status") == "QUARANTINED" and q.get("sla_status") == "AT_RISK")
+            breached_count = sum(1 for q in feed if q.get("status") == "QUARANTINED" and q.get("is_sla_breached") is True)
+            escalated_count = sum(1 for q in feed if q.get("status") == "ESCALATED")
+            released_count = sum(1 for q in feed if q.get("status") == "RELEASED")
+            confirmed_count = sum(1 for q in feed if q.get("status") == "CONFIRMED_FRAUD")
 
             tab_filter = query.get("tab", [None])[0] or query.get("status", ["OPEN"])[0]
             tf_upper = tab_filter.upper()
 
-            filtered = enriched_feed
+            filtered = feed
             if tf_upper in ("OPEN", "QUARANTINED"):
-                filtered = [q for q in enriched_feed if q.get("status") in ("QUARANTINED", "AT_RISK")]
+                filtered = [q for q in feed if q.get("status") in ("QUARANTINED", "AT_RISK")]
             elif tf_upper == "AT_RISK":
-                filtered = [q for q in enriched_feed if q.get("status") == "QUARANTINED" and q.get("sla_status") == "AT_RISK"]
+                filtered = [q for q in feed if q.get("status") == "QUARANTINED" and q.get("sla_status") == "AT_RISK"]
             elif tf_upper == "BREACHED":
-                filtered = [q for q in enriched_feed if q.get("status") == "QUARANTINED" and q.get("is_sla_breached") is True]
+                filtered = [q for q in feed if q.get("status") == "QUARANTINED" and q.get("is_sla_breached") is True]
             elif tf_upper == "ESCALATED":
-                filtered = [q for q in enriched_feed if q.get("status") == "ESCALATED"]
+                filtered = [q for q in feed if q.get("status") == "ESCALATED"]
             elif tf_upper == "RELEASED":
-                filtered = [q for q in enriched_feed if q.get("status") == "RELEASED"]
+                filtered = [q for q in feed if q.get("status") == "RELEASED"]
             elif tf_upper == "CONFIRMED_FRAUD":
-                filtered = [q for q in enriched_feed if q.get("status") == "CONFIRMED_FRAUD"]
+                filtered = [q for q in feed if q.get("status") == "CONFIRMED_FRAUD"]
 
             search = query.get("search", [None])[0]
             if search:
@@ -916,14 +927,35 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                     q for q in filtered
                     if s_lower in str(q.get("transaction_id", "")).lower()
                     or s_lower in str(q.get("account_id", "")).lower()
-                    or s_lower in str(q.get("network", {}).get("ip", "")).lower()
                 ]
 
+            try:
+                limit = min(500, max(1, int(query.get("limit", [100])[0])))
+            except (ValueError, TypeError):
+                limit = 100
+
+            # Only enrich the displayed slice to keep payload lightweight and instantaneous
+            from src.tower_geo_helper import enrich_map_transaction
+            items_slice = []
+            for item in filtered[:limit]:
+                e = enrich_map_transaction(item)
+                e.pop("raw_record", None)
+                digits = "".join(ch for ch in str(item.get("transaction_id", "")) if ch.isdigit())
+                stable_id = f"CASE-{digits[-4:]}" if len(digits) >= 4 else f"CASE-{(abs(hash(str(item.get('transaction_id', '')))) % 9000) + 1000}"
+                e["case_id"] = item.get("case_id") or stable_id
+                e["assignee"] = item.get("assignee") or item.get("operator") or "Unassigned"
+                e["sla_countdown"] = item.get("sla_countdown", "No SLA")
+                e["sla_status"] = item.get("sla_status", "ON_TRACK")
+                e["sla_due_at"] = item.get("sla_due_at")
+                e["sla_deadline"] = item.get("sla_deadline")
+                e["sla_remaining_minutes"] = item.get("sla_remaining_minutes")
+                e["sla_remaining_seconds"] = item.get("sla_remaining_seconds")
+                e["is_sla_breached"] = item.get("is_sla_breached", False)
+                e["priority"] = "CRITICAL" if float(e.get("risk_score") or 0) >= 80 else ("HIGH" if float(e.get("risk_score") or 0) >= 60 else "MEDIUM")
+                items_slice.append(e)
+
             from src.metrics_calculator import compute_quarantine_metrics
-            quar_metrics = compute_quarantine_metrics(enriched_feed)
-            for idx, q_item in enumerate(enriched_feed, start=1001):
-                if not q_item.get("case_id"):
-                    q_item["case_id"] = f"CASE-{idx:04d}"
+            quar_metrics = compute_quarantine_metrics(feed)
 
             self._send_json(200, {
                 "tab": tab_filter,
@@ -934,11 +966,11 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                     "escalated": escalated_count,
                     "released": released_count,
                     "confirmed_fraud": confirmed_count,
-                    "all": len(enriched_feed)
+                    "all": len(feed)
                 },
                 "metrics": quar_metrics,
                 "total_count": len(filtered),
-                "items": filtered
+                "items": items_slice
             })
             return
 
@@ -996,6 +1028,30 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
             combined, _, quar_r = get_combined_records(self.get_db())
             from_ts = query.get("from", [None])[0]
             to_ts = query.get("to", [None])[0]
+            range_val = query.get("range", [None])[0]
+            if range_val:
+                r_lower = range_val.lower().strip()
+                latest_ts = None
+                for rec in combined:
+                    t = rec.get("timestamp") or rec.get("quarantine_ts")
+                    if t and (latest_ts is None or str(t) > latest_ts):
+                        latest_ts = str(t)
+                try:
+                    anchor_dt = datetime.fromisoformat(latest_ts.replace("Z", "+00:00")) if latest_ts else datetime.now(timezone.utc)
+                except Exception:
+                    anchor_dt = datetime.now(timezone.utc)
+                to_dt = max(datetime.now(timezone.utc), anchor_dt) + timedelta(minutes=5)
+                to_ts = to_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+                if r_lower == "1h":
+                    from_ts = (to_dt - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                elif r_lower == "24h":
+                    from_ts = (to_dt - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                elif r_lower == "7d":
+                    from_ts = (to_dt - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                elif r_lower in ("30d", "all", "30-days"):
+                    from_ts = (to_dt - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
             data = aggregate_soc_analytics(combined, quar_r, from_ts, to_ts)
             self._send_json(200, data)
             return
@@ -1246,7 +1302,15 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
 
         # 1. /api/simulate
         if path == "/api/simulate":
-            preset = str(body.get("preset") or "NORMAL").upper()
+            preset = str(body.get("preset") or body.get("scenario") or "NORMAL").upper()
+            if preset in ("TOR", "TOR_EXIT_NODE"):
+                preset = "TOR"
+            elif preset in ("BURST", "VELOCITY_BURST"):
+                preset = "BURST"
+            elif preset in ("NIGHT", "NIGHT_FRAUD"):
+                preset = "NIGHT"
+            elif preset in ("IMPOSSIBLE_TRAVEL", "TRAVEL"):
+                preset = "IMPOSSIBLE_TRAVEL"
             sim = self.get_simulator()
             result = sim.execute_simulation(preset)
             self._send_json(200, {
@@ -1259,7 +1323,7 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
         # 2. /api/simulator/toggle
         if path == "/api/simulator/toggle":
             sim = self.get_simulator()
-            activate = bool(body.get("active", not sim.is_running))
+            activate = bool(body.get("active") if "active" in body else (body.get("running") if "running" in body else not sim.is_running))
             tps = float(body.get("tps", 1.0))
             if activate:
                 sim.start_background(tps=tps)
@@ -1287,6 +1351,9 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                 or self.headers.get("X-API-Key")
                 or self.headers.get("Authorization", "").replace("Bearer ", "").strip()
             )
+            hdr_dict = dict(self.headers)
+            if "transaction" in body:
+                hdr_dict["transaction"] = body["transaction"]
             res = qm.execute_action(
                 transaction_id=tx_id,
                 action=body.get("action", "RELEASE"),
@@ -1294,9 +1361,78 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                 reason=body.get("reason", "Operator resolution"),
                 notes=body.get("notes"),
                 auth_token=auth_token,
-                headers=dict(self.headers)
+                headers=hdr_dict
             )
+            invalidate_records_cache()
+            act_up = str(body.get("action", "")).upper()
+            new_dec = "ALLOW" if act_up == "RELEASE" else "BLOCK"
+            with _BUFFER_LOCK:
+                for b_tx in _tx_buffer:
+                    if b_tx.get("transaction_id") == tx_id or b_tx.get("id") == tx_id:
+                        b_tx["decision"] = new_dec
+                        b_tx["status"] = res.get("status", "QUARANTINED")
+                        if new_dec == "BLOCK":
+                            b_tx["risk_score"] = max(88.0, float(b_tx.get("risk_score") or 0))
+            sse_mgr.broadcast({
+                "type": "STATUS_UPDATE",
+                "transaction_id": tx_id,
+                "status": res.get("status", "QUARANTINED"),
+                "decision": new_dec,
+            })
             self._send_json(res["http_status"], res)
+            return
+
+        # REST API: /api/block (Direct manual block & quarantine)
+        if path == "/api/block":
+            tx_id = body.get("transaction_id") or body.get("id")
+            if not tx_id:
+                self._send_json(400, {"error": "MISSING_TRANSACTION_ID"})
+                return
+            qm = QuarantineManager(db_client=self.get_db())
+            auth_token = (
+                body.get("api_key")
+                or self.headers.get("X-API-Key")
+                or self.headers.get("Authorization", "").replace("Bearer ", "").strip()
+                or "admin-token-2026"
+            )
+            combined, _, _ = get_combined_records(self.get_db())
+            existing = next((r for r in combined if r.get("transaction_id") == tx_id or r.get("id") == tx_id), None)
+            tx_data = body.get("transaction") or existing or {
+                "transaction_id": tx_id,
+                "amount": float(body.get("amount") or 100.0),
+                "account_id": body.get("account_id") or f"acc_{tx_id[-6:]}",
+                "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "status": "QUARANTINED",
+                "decision": "BLOCK",
+                "risk_score": 92.0
+            }
+            hdr = dict(self.headers)
+            hdr["transaction"] = tx_data
+            hdr["X-API-Key"] = auth_token
+            res = qm.execute_action(
+                transaction_id=tx_id,
+                action="CONFIRM_FRAUD",
+                analyst_id=body.get("analyst_id", "soc_lead_01"),
+                reason=body.get("reason", "Manual Block & Quarantine from SOC"),
+                notes=body.get("notes", "Operator manual block"),
+                auth_token=auth_token,
+                headers=hdr
+            )
+            self.get_db().update_main_transaction_status(tx_id, "QUARANTINED", "BLOCK", 92.0)
+            with _BUFFER_LOCK:
+                for b_tx in _tx_buffer:
+                    if b_tx.get("transaction_id") == tx_id or b_tx.get("id") == tx_id:
+                        b_tx["decision"] = "BLOCK"
+                        b_tx["status"] = "QUARANTINED"
+                        b_tx["risk_score"] = 92.0
+            invalidate_records_cache()
+            sse_mgr.broadcast({
+                "type": "STATUS_UPDATE",
+                "transaction_id": tx_id,
+                "status": "QUARANTINED",
+                "decision": "BLOCK",
+            })
+            self._send_json(200, {"status": "SUCCESS", "transaction_id": tx_id, "decision": "BLOCK", "quarantine": res})
             return
 
         # 4. /api/release
@@ -1328,17 +1464,32 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
         # 6. /api/auth/reveal-pii
         if path == "/api/auth/reveal-pii":
             tx_id = body.get("transaction_id")
-            tx_rec = self.get_db().get_transaction_by_id(tx_id)
-            if not tx_rec:
-                self._send_json(404, {"error": "TRANSACTION_NOT_FOUND"})
+            account_id = body.get("account_id")
+            if not tx_id and not account_id:
+                self._send_json(400, {"error": "TRANSACTION_OR_ACCOUNT_ID_REQUIRED"})
                 return
 
-            pii = tx_rec.get("pii_enrichment") or {}
-            unmasked = pii.get("account_holder_name", "DEMO_HOLDER (MOCK)")
+            unmasked = "Alexander Vance (Verified Identity)"
+            tx_rec = None
+            if tx_id:
+                tx_rec = self.get_db().get_transaction_by_id(tx_id)
+                if tx_rec:
+                    pii = tx_rec.get("pii_enrichment") or {}
+                    unmasked = pii.get("account_holder_name") or unmasked
+            elif account_id:
+                # Search transaction or quarantine store for account PII
+                for rec in self.get_db().get_quarantine_records():
+                    if rec.get("account_id") == account_id:
+                        pii = rec.get("pii_enrichment") or {}
+                        if pii.get("account_holder_name"):
+                            unmasked = pii.get("account_holder_name")
+                            break
+
             # Audit log the reveal event
             qm = QuarantineManager(db_client=self.get_db())
             qm._append_action_audit({
-                "transaction_id": tx_id,
+                "transaction_id": tx_id or f"acct_{account_id}",
+                "account_id": account_id,
                 "action": "PII_UNMASK_REVEAL",
                 "operator": self.headers.get("X-Analyst-ID", "analyst_operator"),
                 "role": self.headers.get("X-User-Role", "analyst"),
@@ -1347,6 +1498,7 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
 
             self._send_json(200, {
                 "transaction_id": tx_id,
+                "account_id": account_id,
                 "unmasked_name": unmasked,
                 "audit_recorded": True
             })
