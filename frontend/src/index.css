@@ -104,3 +104,104 @@
 .soc-dark-tile-filter {
   filter: invert(100%) hue-rotate(180deg) brightness(90%) contrast(95%) saturate(70%);
 }
+
+/* Custom SOC Threat Popup Card */
+.custom-soc-popup .leaflet-popup-content-wrapper {
+  background: #090e17 !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.85) !important;
+  padding: 12px !important;
+}
+.custom-soc-popup .leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+.custom-soc-popup .leaflet-popup-tip {
+  background: #090e17 !important;
+  border: 1px solid #1e293b !important;
+}
+.custom-soc-popup .leaflet-popup-close-button {
+  color: #94a3b8 !important;
+  padding: 6px !important;
+  top: 6px !important;
+  right: 6px !important;
+}
+.custom-soc-popup .leaflet-popup-close-button:hover {
+  color: #ffffff !important;
+}
+
+/* Spider leg styling for high zoom */
+.leaflet-cluster-spider-leg {
+  stroke: #64748b !important;
+  stroke-width: 1.5px !important;
+  stroke-dasharray: 4, 4 !important;
+}
+
+/* SOC Threat Pin (HD Marker with Amount & Risk Score) */
+.soc-threat-marker-wrapper {
+  background: transparent !important;
+  border: none !important;
+}
+.soc-threat-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.7));
+}
+.soc-threat-pin:hover {
+  transform: translateY(-3px) scale(1.12);
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.95));
+  z-index: 1000 !important;
+}
+.soc-threat-pin .pin-badge {
+  display: flex;
+  align-items: center;
+  gap: 3.5px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  border-width: 1.5px;
+  border-style: solid;
+}
+.soc-threat-pin.pin-block .pin-badge {
+  background: #250909;
+  border-color: #ef4444;
+  color: #fecaca;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.75);
+}
+.soc-threat-pin.pin-review .pin-badge {
+  background: #251605;
+  border-color: #f59e0b;
+  color: #fef3c7;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.65);
+}
+.soc-threat-pin.pin-allow .pin-badge {
+  background: #042014;
+  border-color: #10b981;
+  color: #a7f3d0;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.65);
+}
+.soc-threat-pin.pin-selected .pin-badge {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 18px #38bdf8 !important;
+  transform: scale(1.14);
+}
+.soc-threat-pin .pin-score {
+  padding: 0 3px;
+  border-radius: 3px;
+  font-size: 9px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.soc-threat-pin .pin-stem {
+  width: 2px;
+  height: 6px;
+}
+.soc-threat-pin.pin-block .pin-stem { background: #ef4444; }
+.soc-threat-pin.pin-review .pin-stem { background: #f59e0b; }
+.soc-threat-pin.pin-allow .pin-stem { background: #10b981; }

@@ -108,14 +108,15 @@ def calculate_haversine_meters(lat1: float, lon1: float, lat2: float, lon2: floa
 
 
 def generate_cell_tower(txn_id: str, lat: float, lon: float, country: str, timestamp_str: str) -> Dict[str, Any]:
-    """Deterministically derive a realistic nearby cell tower for a given transaction."""
-    # Seed hashing off txn_id for repeatability
-    digest = hashlib.sha256(f"{txn_id}_tower".encode("utf-8")).hexdigest()
+    """Deterministically derive a realistic stationary cell tower for a geographic sector."""
+    # Hash on geographic grid sector so proximate transactions route through the same physical tower
+    sector_key = f"{round(lat, 2)}_{round(lon, 2)}"
+    digest = hashlib.sha256(sector_key.encode("utf-8")).hexdigest()
     int_seed = int(digest[:8], 16)
 
-    # Place tower radially between 180m and 1050m from transaction
+    # Place tower radially between 250m and 850m from sector center
     angle = (int_seed % 360) * (math.pi / 180.0)
-    radial_dist_m = 180.0 + ((int_seed >> 8) % 870)  # 180m to 1050m
+    radial_dist_m = 250.0 + ((int_seed >> 8) % 600)
 
     # Convert radial displacement to lat/lon degrees
     lat_rad = math.radians(lat)
@@ -134,9 +135,8 @@ def generate_cell_tower(txn_id: str, lat: float, lon: float, country: str, times
     cid = 10000 + ((int_seed >> 4) % 89999)
     tower_id = f"{carrier_info['mcc']}-{carrier_info['mnc']}-{lac}-{cid}"
 
-    accuracy = round(20.0 + ((int_seed % 500) / 10.0), 1)  # 20.0m to 70.0m
+    accuracy = round(20.0 + ((int_seed % 500) / 10.0), 1)
 
-    # Fix timestamp slightly prior to txn timestamp
     try:
         dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
         fix_dt = dt - timedelta(seconds=(int_seed % 12) + 1)
@@ -179,8 +179,12 @@ def enrich_map_transaction(record: Dict[str, Any], all_records: Optional[List[Di
 
     has_coords = False
     if raw_lat is not None and raw_lon is not None and not (float(raw_lat) == 0.0 and float(raw_lon) == 0.0 and not city):
-        lat = round(float(raw_lat), 6)
-        lon = round(float(raw_lon), 6)
+        # Realistic street micro-dispersion (15m - 40m) so multiple co-located transactions spread across streets and buildings
+        h_disp = int(hashlib.md5(f"{txn_id}_street_dispersion".encode("utf-8")).hexdigest()[:6], 16)
+        disp_lat = ((h_disp % 100) - 50) * 0.000006
+        disp_lon = (((h_disp >> 8) % 100) - 50) * 0.000006
+        lat = round(float(raw_lat) + disp_lat, 6)
+        lon = round(float(raw_lon) + disp_lon, 6)
         city = city or "New York"
         country = country or "US"
         has_coords = True
@@ -203,7 +207,11 @@ def enrich_map_transaction(record: Dict[str, Any], all_records: Optional[List[Di
     if has_coords:
         source_fix = record.get("fix_source") or ("CELL_TOWER" if ("sim" in txn_id or "travel" in txn_id) else "GPS")
         accuracy_m = float(record.get("accuracy_meters") or 18.5)
-        tower = generate_cell_tower(txn_id, lat, lon, country, timestamp_str)
+        existing_tw = record.get("cell_tower") or record.get("tower")
+        if existing_tw and isinstance(existing_tw, dict) and existing_tw.get("tower_id"):
+            tower = existing_tw
+        else:
+            tower = generate_cell_tower(txn_id, lat, lon, country, timestamp_str)
     else:
         source_fix = "NO_COORDINATES"
         accuracy_m = 0.0

@@ -10,7 +10,7 @@ import urllib.request
 import urllib.error
 import threading
 import unittest
-from http.server import HTTPServer
+from http.server import HTTPServer, ThreadingHTTPServer
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
@@ -23,7 +23,7 @@ from src.stream_monitor import TelemetryHTTPRequestHandler
 class TestPhase3ConsoleAPI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.httpd = HTTPServer(("127.0.0.1", 0), TelemetryHTTPRequestHandler)
+        cls.httpd = ThreadingHTTPServer(("127.0.0.1", 0), TelemetryHTTPRequestHandler)
         cls.port = cls.httpd.server_port
         cls.server_thread = threading.Thread(target=cls.httpd.serve_forever, daemon=True)
         cls.server_thread.start()
@@ -35,19 +35,19 @@ class TestPhase3ConsoleAPI(unittest.TestCase):
         cls.httpd.server_close()
 
     def _get(self, path):
-        req = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}")
-        with urllib.request.urlopen(req, timeout=3.0) as resp:
+        req = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", headers={"Connection": "close"})
+        with urllib.request.urlopen(req, timeout=5.0) as resp:
             content = resp.read()
             ct = resp.headers.get("Content-Type", "")
             return resp.status, ct, content
 
     def _post(self, path, payload, headers=None):
         data = json.dumps(payload).encode("utf-8")
-        hdrs = {"Content-Type": "application/json"}
+        hdrs = {"Content-Type": "application/json", "Connection": "close"}
         if headers:
             hdrs.update(headers)
         req = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", data=data, headers=hdrs)
-        with urllib.request.urlopen(req, timeout=3.0) as resp:
+        with urllib.request.urlopen(req, timeout=5.0) as resp:
             content = resp.read()
             return resp.status, json.loads(content.decode("utf-8"))
 

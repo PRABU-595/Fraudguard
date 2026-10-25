@@ -103,8 +103,8 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
   // Hovered account for travel path
   const [hoveredAccountId, setHoveredAccountId] = useState<string | null>(null);
 
-  // Minimum zoom level for carrier towers
-  const MIN_TOWER_ZOOM = 8;
+  // Minimum zoom level for carrier towers (level 5+ displays towers across regional and city views)
+  const MIN_TOWER_ZOOM = 5;
 
   // Fetch tile & thresholds config from backend API
   useEffect(() => {
@@ -378,46 +378,132 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
     };
   }, []);
 
+  // Wire global handler for popup drawer inspection
+  useEffect(() => {
+    (window as any).__selectAndOpenTx = (txId: string) => {
+      const match = transactions.find((t) => t.transaction_id === txId);
+      if (match) {
+        onSelectTransaction(match);
+      }
+    };
+    return () => {
+      delete (window as any).__selectAndOpenTx;
+    };
+  }, [transactions, onSelectTransaction]);
+
   // Update Markers & Clusters when filtered transactions change (independent of zoom level!)
   useEffect(() => {
     if (!mapRef.current || !clusterGroupRef.current) return;
 
     clusterGroupRef.current.clearLayers();
-    const canvasRenderer = L.canvas();
-    const newMarkers: L.CircleMarker[] = [];
+    const newMarkers: L.Marker[] = [];
 
     filteredWithCoords.forEach((tx) => {
       if (tx.lat == null || tx.lon == null) return;
 
+      const isSelected = tx.transaction_id === selectedTxId;
       const isBlock = tx.decision === "BLOCK" || tx.status === "QUARANTINED";
       const isReview = tx.decision === "REVIEW_QUEUE" || tx.decision === "REVIEW";
-      const color = isBlock ? "#ef4444" : isReview ? "#f59e0b" : "#10b981";
-      const radius = Math.max(6, Math.min(18, 6 + Math.log10(Math.max(1, tx.amount)) * 3));
+      const formattedAmount = formatCurrency(tx.amount, tx.currency);
+      const riskScore = Math.round(tx.risk_score);
+      const iconSymbol = isBlock ? "🚨" : isReview ? "⚠️" : "🛡️";
 
-      // Transaction Circle Marker
-      const marker = L.circleMarker([tx.lat, tx.lon], {
-        radius,
-        fillColor: color,
-        color: tx.transaction_id === selectedTxId ? "#ffffff" : color,
-        weight: tx.transaction_id === selectedTxId ? 3 : 1.5,
-        opacity: 1,
-        fillOpacity: 0.85,
-        renderer: canvasRenderer,
+      const pinHtml = `
+        <div class="soc-threat-pin ${isBlock ? 'pin-block' : isReview ? 'pin-review' : 'pin-allow'} ${isSelected ? 'pin-selected' : ''}">
+          <div class="pin-badge">
+            <span class="pin-icon">${iconSymbol}</span>
+            <span class="pin-amount">${formattedAmount}</span>
+            <span class="pin-score">${riskScore}</span>
+          </div>
+          <div class="pin-stem"></div>
+        </div>
+      `;
+
+      const pinIcon = L.divIcon({
+        className: "soc-threat-marker-wrapper",
+        html: pinHtml,
+        iconSize: [84, 28],
+        iconAnchor: [42, 28],
+        popupAnchor: [0, -28],
+      });
+
+      const marker = L.marker([tx.lat, tx.lon], {
+        icon: pinIcon,
+        zIndexOffset: isSelected ? 1000 : (isBlock ? 500 : 100),
       } as any);
 
       (marker as any).options.decision = isBlock ? "BLOCK" : isReview ? "REVIEW" : "ALLOW";
 
-      // Popup
-      marker.bindTooltip(`
-        <div style="font-family:monospace; font-size:11px;">
-          <b>${tx.transaction_id}</b><br/>
-          Amount: ${formatCurrency(tx.amount, tx.currency)}<br/>
-          Risk: ${Math.round(tx.risk_score)} (${tx.decision})<br/>
-          Location: ${tx.city || "Unknown"}, ${tx.country}
+      // Rich High-Definition Threat Card Popup
+      const popupContent = `
+        <div class="soc-detail-popup font-sans text-slate-100">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding-bottom:8px; border-bottom:1px solid #1e293b;">
+            <div style="font-family:monospace; font-size:12px; font-weight:700; color:#ffffff;">
+              ${tx.transaction_id}
+            </div>
+            <span style="padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; font-family:monospace; ${
+              isBlock ? 'background:#450a0a; color:#fca5a5; border:1px solid #ef4444;' :
+              isReview ? 'background:#451a03; color:#fcd34d; border:1px solid #f59e0b;' :
+              'background:#064e3b; color:#6ee7b7; border:1px solid #10b981;'
+            }">
+              ${tx.decision}
+            </span>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:8px 0; border-bottom:1px solid #1e293b;">
+            <div>
+              <div style="font-size:10px; color:#94a3b8; text-transform:uppercase; font-weight:600;">Amount</div>
+              <div style="font-size:16px; font-weight:800; color:#ffffff; font-family:monospace;">${formattedAmount}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:10px; color:#94a3b8; text-transform:uppercase; font-weight:600;">Risk Score</div>
+              <div style="font-size:14px; font-weight:700; font-family:monospace; color:${isBlock ? '#ef4444' : isReview ? '#f59e0b' : '#10b981'};">
+                ${riskScore} / 100
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:8px 0; font-family:monospace; font-size:11px; border-bottom:1px solid #1e293b;">
+            <div>
+              <span style="font-size:9px; color:#64748b; text-transform:uppercase; display:block;">Location</span>
+              <span style="color:#e2e8f0; font-weight:600;">${tx.city || "Mumbai"}, ${tx.country || "IN"}</span>
+            </div>
+            <div>
+              <span style="font-size:9px; color:#64748b; text-transform:uppercase; display:block;">Channel</span>
+              <span style="color:#e2e8f0;">${(tx.channel || "MOBILE_APP").replace(/_/g, ' ')}</span>
+            </div>
+            ${tx.cell_tower ? `
+              <div style="grid-column: span 2;">
+                <span style="font-size:9px; color:#64748b; text-transform:uppercase; display:block;">Nearby Carrier Tower</span>
+                <span style="color:#d8b4fe;">${tx.cell_tower.carrier || "Cellular"} · ${Math.round(tx.cell_tower.distance_meters || 0)}m (${tx.cell_tower.tower_id})</span>
+              </div>
+            ` : ""}
+            ${tx.flags && tx.flags.length > 0 ? `
+              <div style="grid-column: span 2;">
+                <span style="font-size:9px; color:#64748b; text-transform:uppercase; display:block;">Triggered Risk Rules</span>
+                <span style="color:#fcd34d;">${tx.flags.map((f: any) => f.label || f.flag).join(", ")}</span>
+              </div>
+            ` : ""}
+          </div>
+
+          <button
+            style="width:100%; margin-top:10px; padding:8px 12px; border-radius:6px; background:#0284c7; color:#ffffff; font-weight:600; font-size:11px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(2,132,199,0.4);"
+            onclick="window.__selectAndOpenTx && window.__selectAndOpenTx('${tx.transaction_id}')"
+          >
+            <span>Open Full Forensic Drawer</span>
+            <span>➔</span>
+          </button>
         </div>
-      `, { direction: "top", offset: [0, -10] });
+      `;
+
+      marker.bindPopup(popupContent, {
+        className: "custom-soc-popup",
+        maxWidth: 320,
+        minWidth: 260,
+      });
 
       marker.on("click", () => {
+        marker.openPopup();
         onSelectTransaction(tx);
       });
 
@@ -460,55 +546,199 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
     const isZoomValidForTowers = currentZoom >= MIN_TOWER_ZOOM;
     if (!showCellTowers || !isZoomValidForTowers) return;
 
-    // Distinct purple cell tower SVG icon
-    const towerIcon = L.divIcon({
-      className: "cell-tower-custom-icon",
-      html: `<div style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:4px;background:#581c87;border:1.5px solid #a855f7;box-shadow:0 0 8px rgba(168,85,247,0.6);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f3e8ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M7 7l5-5 5 5M4 14h16M2 22h20M9 18l3-3 3 3"/></svg></div>`,
-      iconSize: [22, 22],
-      iconAnchor: [11, 11],
-    });
+    // Aggregate transactions by unique cell tower
+    const towersMap = new Map<string, {
+      tower: any;
+      transactions: Transaction[];
+      totalAmount: number;
+      dangerousCount: number;
+      reviewCount: number;
+      allowCount: number;
+    }>();
 
     filteredWithCoords.forEach((tx) => {
       const ct = tx.cell_tower || (tx as any).tower;
-      if (ct && ct.lat != null && ct.lon != null) {
-        const towerMarker = L.marker([ct.lat, ct.lon], {
-          icon: towerIcon,
-          pane: "towersPane"
-        });
+      if (!ct || !ct.tower_id || ct.lat == null || ct.lon == null) return;
 
-        towerMarker.bindTooltip(`
-          <div style="font-family:monospace; font-size:11px;">
-            <b>Cell Tower: ${ct.tower_id}</b><br/>
-            Carrier: ${ct.carrier || "TeleCom"}<br/>
-            Accuracy: ${ct.accuracy_meters || 450}m
+      let entry = towersMap.get(ct.tower_id);
+      if (!entry) {
+        entry = {
+          tower: ct,
+          transactions: [],
+          totalAmount: 0,
+          dangerousCount: 0,
+          reviewCount: 0,
+          allowCount: 0,
+        };
+        towersMap.set(ct.tower_id, entry);
+      }
+
+      entry.transactions.push(tx);
+      entry.totalAmount += (tx.amount || 0);
+      const isDangerous = tx.decision === "BLOCK" || tx.status === "QUARANTINED" || (tx.risk_score || 0) >= 80;
+      const isReview = tx.decision === "REVIEW_QUEUE" || tx.decision === "REVIEW";
+
+      if (isDangerous) entry.dangerousCount++;
+      else if (isReview) entry.reviewCount++;
+      else entry.allowCount++;
+    });
+
+    towersMap.forEach((entry) => {
+      const ct = entry.tower;
+      const totalCount = entry.transactions.length;
+      const dangerousCount = entry.dangerousCount;
+      const dangerPct = totalCount > 0 ? Math.round((dangerousCount / totalCount) * 100) : 0;
+      const totalAmountFormatted = formatCurrency(entry.totalAmount, entry.transactions[0]?.currency || "USD");
+
+      const hasDangerousTraffic = dangerousCount > 0;
+      const badgeBg = hasDangerousTraffic ? "#581c87" : "#3b0764";
+      const badgeBorder = hasDangerousTraffic ? "#ef4444" : "#a855f7";
+      const iconShadow = hasDangerousTraffic ? "0 0 12px rgba(239, 68, 68, 0.75)" : "0 0 8px rgba(168, 85, 247, 0.6)";
+
+      const customTowerIcon = L.divIcon({
+        className: "cell-tower-custom-icon",
+        html: `
+          <div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;background:${badgeBg};border:1.5px solid ${badgeBorder};box-shadow:${iconShadow};cursor:pointer;position:relative;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${hasDangerousTraffic ? '#fca5a5' : '#f3e8ff'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M7 7l5-5 5 5M4 14h16M2 22h20M9 18l3-3 3 3"/></svg>
+            ${dangerousCount > 0 ? `<span style="position:absolute;top:-4px;right:-4px;width:9px;height:9px;border-radius:50%;background:#ef4444;border:1.5px solid #ffffff;box-shadow:0 0 6px #ef4444;"></span>` : ''}
           </div>
-        `, { direction: "top" });
+        `,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+        popupAnchor: [0, -16],
+      });
 
-        // Dashed connector line from cell tower to transaction
+      const towerMarker = L.marker([ct.lat, ct.lon], {
+        icon: customTowerIcon,
+        pane: "towersPane",
+      });
+
+      // Quick hover tooltip
+      towerMarker.bindTooltip(`
+        <div style="font-family:monospace; font-size:11px;">
+          <b>🗼 ${ct.carrier || "Cellular Provider"}</b><br/>
+          ID: ${ct.tower_id}<br/>
+          Traffic: <b>${totalCount} txs</b> (${totalAmountFormatted})<br/>
+          Threat Status: <span style="color:${dangerousCount > 0 ? '#ef4444' : '#10b981'}; font-weight:700;">${dangerousCount} Dangerous (${dangerPct}%)</span><br/>
+          <i style="color:#94a3b8; font-size:10px;">Click tower to inspect location & dangerous events</i>
+        </div>
+      `, { direction: "top", offset: [0, -10] });
+
+      // Rich Click Popup Card: Location, Amount of transactions, Dangerous count, and connected items
+      const recentTxsHtml = entry.transactions.slice(0, 5).map((t) => {
+        const isB = t.decision === "BLOCK" || t.status === "QUARANTINED";
+        const isR = t.decision === "REVIEW_QUEUE" || t.decision === "REVIEW";
+        const color = isB ? "#ef4444" : isR ? "#f59e0b" : "#10b981";
+        const bg = isB ? "#450a0a" : isR ? "#451a03" : "#064e3b";
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-family:monospace; font-size:10.5px; border-bottom:1px solid #1e293b;">
+            <span style="color:#cbd5e1; cursor:pointer;" onclick="window.__selectAndOpenTx && window.__selectAndOpenTx('${t.transaction_id}')">
+              ${t.transaction_id}
+            </span>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-weight:700; color:#ffffff;">${formatCurrency(t.amount, t.currency)}</span>
+              <span style="padding:1px 5px; border-radius:3px; background:${bg}; color:${color}; font-size:9px; font-weight:700;">${t.decision}</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const towerPopupContent = `
+        <div class="custom-tower-popup-content font-sans text-slate-100" style="min-width:280px; max-width:340px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding-bottom:8px; border-bottom:1px solid #7e22ce;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:18px;">🗼</span>
+              <div>
+                <h4 style="font-weight:700; color:#ffffff; font-size:13px; margin:0;">${ct.carrier || "Cellular TeleCom"}</h4>
+                <div style="font-size:10px; font-family:monospace; color:#d8b4fe;">${ct.sector || ct.tower_id}</div>
+              </div>
+            </div>
+            <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; font-family:monospace; background:#581c87; color:#f3e8ff; border:1px solid #a855f7;">
+              ${ct.badge || "LIVE CELL"}
+            </span>
+          </div>
+
+          <!-- Exact Location with 1-Click Copy -->
+          <div style="background:#0f172a; border:1px solid #1e293b; border-radius:8px; padding:8px; margin:8px 0; font-family:monospace;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:9px; color:#94a3b8; text-transform:uppercase; font-weight:600;">Tower Location</span>
+              <button
+                style="background:#1e293b; border:1px solid #334155; color:#cbd5e1; border-radius:4px; padding:1px 6px; font-size:9px; cursor:pointer;"
+                onclick="navigator.clipboard.writeText('${ct.lat.toFixed(6)}, ${ct.lon.toFixed(6)}')"
+                title="Copy coordinates"
+              >
+                📋 Copy Lat/Lon
+              </button>
+            </div>
+            <div style="font-size:12px; font-weight:700; color:#38bdf8; margin-top:2px;">
+              ${ct.lat.toFixed(6)}, ${ct.lon.toFixed(6)}
+            </div>
+            <div style="font-size:10px; color:#94a3b8; margin-top:2px;">
+              ${ct.city || "Mumbai"}, ${ct.country || "IN"} · Coverage: ±${ct.accuracy_meters || 450}m
+            </div>
+          </div>
+
+          <!-- Volume & Dangerous Transaction KPIs -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px;">
+            <div style="background:#0f172a; border:1px solid #1e293b; border-radius:8px; padding:6px 8px;">
+              <div style="font-size:9px; color:#94a3b8; text-transform:uppercase;">Volume Routed</div>
+              <div style="font-size:14px; font-weight:800; color:#ffffff; font-family:monospace;">${totalAmountFormatted}</div>
+              <div style="font-size:9px; color:#64748b; font-family:monospace;">${totalCount} Transactions</div>
+            </div>
+            <div style="background:${dangerousCount > 0 ? '#260a0a' : '#042014'}; border:1px solid ${dangerousCount > 0 ? '#b91c1c' : '#059669'}; border-radius:8px; padding:6px 8px;">
+              <div style="font-size:9px; color:${dangerousCount > 0 ? '#fca5a5' : '#6ee7b7'}; text-transform:uppercase;">Dangerous Txs</div>
+              <div style="font-size:14px; font-weight:800; font-family:monospace; color:${dangerousCount > 0 ? '#ef4444' : '#10b981'};">
+                🚨 ${dangerousCount} (${dangerPct}%)
+              </div>
+              <div style="font-size:9px; color:#94a3b8; font-family:monospace;">${entry.allowCount} Safe · ${entry.reviewCount} Review</div>
+            </div>
+          </div>
+
+          <!-- Connected Transactions -->
+          <div>
+            <div style="font-size:9px; font-weight:700; color:#94a3b8; text-transform:uppercase; margin-bottom:4px;">
+              Recent Events Routed (${totalCount})
+            </div>
+            <div style="max-height:105px; overflow-y:auto; padding-right:2px;">
+              ${recentTxsHtml}
+            </div>
+          </div>
+        </div>
+      `;
+
+      towerMarker.bindPopup(towerPopupContent, {
+        className: "custom-tower-popup",
+        maxWidth: 340,
+        minWidth: 280,
+      });
+
+      // Accuracy coverage circle
+      const accuracyCircle = L.circle([ct.lat, ct.lon], {
+        radius: ct.accuracy_meters || 450,
+        color: hasDangerousTraffic ? "#dc2626" : "#9333ea",
+        weight: 1.2,
+        fillColor: hasDangerousTraffic ? "#ef4444" : "#a855f7",
+        fillOpacity: hasDangerousTraffic ? 0.16 : 0.09,
+        pane: "towersPane",
+      });
+
+      // Connector lines to transactions
+      entry.transactions.slice(0, 15).forEach((tx) => {
         if (tx.lat != null && tx.lon != null) {
+          const isDanger = tx.decision === "BLOCK" || tx.status === "QUARANTINED";
           const connector = L.polyline([[ct.lat, ct.lon], [tx.lat, tx.lon]], {
-            color: "#a855f7",
-            weight: 1.5,
-            dashArray: "4, 4",
-            opacity: 0.7,
-            pane: "towersPane"
+            color: isDanger ? "#ef4444" : "#a855f7",
+            weight: isDanger ? 1.5 : 1,
+            dashArray: isDanger ? "3, 3" : "4, 4",
+            opacity: isDanger ? 0.75 : 0.45,
+            pane: "towersPane",
           });
           cellTowersLayerRef.current.addLayer(connector);
         }
+      });
 
-        // Tower accuracy circle
-        const accuracyCircle = L.circle([ct.lat, ct.lon], {
-          radius: ct.accuracy_meters || 450,
-          color: "#9333ea",
-          weight: 1,
-          fillColor: "#a855f7",
-          fillOpacity: 0.12,
-          pane: "towersPane"
-        });
-
-        cellTowersLayerRef.current.addLayer(towerMarker);
-        cellTowersLayerRef.current.addLayer(accuracyCircle);
-      }
+      cellTowersLayerRef.current.addLayer(towerMarker);
+      cellTowersLayerRef.current.addLayer(accuracyCircle);
     });
   }, [filteredWithCoords, showCellTowers, currentZoom]);
 
