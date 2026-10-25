@@ -17,7 +17,8 @@ import {
   TrendingUp,
   Activity,
   Zap,
-  Info
+  Info,
+  RefreshCw
 } from "lucide-react";
 import { formatCurrency } from "../utils/formatters";
 
@@ -83,6 +84,17 @@ export const RulesConfigPage: React.FC<RulesConfigPageProps> = ({
     if (!config || !draftConfig) return false;
     return JSON.stringify(config) !== JSON.stringify(draftConfig);
   }, [config, draftConfig]);
+
+  // Top rules map
+  const topRulesMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of analyticsData?.top_rules || []) {
+      if (r.rule_id) {
+        map.set(String(r.rule_id), Number(r.count || 0));
+      }
+    }
+    return map;
+  }, [analyticsData]);
 
   // Validation
   const validateDraft = (cfg: any): boolean => {
@@ -263,7 +275,16 @@ export const RulesConfigPage: React.FC<RulesConfigPageProps> = ({
     }
   };
 
-  if (!draftConfig || !config) return null;
+  if (loading || !draftConfig || !config) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-12 text-muted">
+        <div className="flex items-center space-x-2">
+          <RefreshCw className="h-4 w-4 animate-spin text-cyan-400" />
+          <span>Loading governance configuration...</span>
+        </div>
+      </div>
+    );
+  }
 
   const latestVersion = versions[versions.length - 1] || {
     version_id: "v4",
@@ -293,15 +314,6 @@ export const RulesConfigPage: React.FC<RulesConfigPageProps> = ({
 
   // Force-block rules with hits
   const forceBlockRules = (draftConfig.rules || []).filter((r: any) => r.force_block);
-  const topRulesMap = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const r of analyticsData?.top_rules || []) {
-      if (r.rule_id) {
-        map.set(String(r.rule_id), Number(r.count || 0));
-      }
-    }
-    return map;
-  }, [analyticsData]);
 
   return (
     <div className="flex-1 flex flex-col space-y-4 text-xs select-none">
