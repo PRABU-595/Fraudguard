@@ -1,6 +1,6 @@
 {
   "thresholds": {
-    "block_score": 80,
+    "block_score": 82,
     "review_score": 40,
     "force_block_min_score": 85
   },
@@ -17,25 +17,85 @@
       "ip_geolocation"
     ]
   },
-  "velocity": {
-    "velocity_1hr_threshold": 5,
-    "velocity_24hr_threshold": 15,
-    "velocity_7d_threshold": 40,
-    "amount_spike_pct": 300.0,
-    "amount_zscore_threshold": 3.0
-  },
-  "time": {
-    "rapid_succession_mins": 2.0,
-    "burst_count_threshold": 3,
-    "burst_window_mins": 5.0,
-    "dormant_days_threshold": 60,
-    "night_hours": [23, 0, 1, 2, 3, 4, 5]
-  },
   "quarantine": {
     "auto_release_hours": 24,
     "sla_review_minutes": 60,
     "alarm_threshold": 100
   },
+  "rules": [
+    {
+      "id": "IMPOSSIBLE_TRAVEL",
+      "name": "Impossible Travel",
+      "description": "Movement between distant locations exceeding jet speeds (>900 km/h)",
+      "weight": 85,
+      "severity": "CRITICAL",
+      "enabled": true,
+      "force_block": true
+    },
+    {
+      "id": "TOR_EXIT_NODE",
+      "name": "Tor Exit Relay",
+      "description": "Origin IP confirmed on active Tor onion exit directory",
+      "weight": 85,
+      "severity": "CRITICAL",
+      "enabled": true,
+      "force_block": true
+    },
+    {
+      "id": "HIGH_VELOCITY",
+      "name": "Velocity Spike",
+      "description": "More than 5 transactions within a 60-second window",
+      "weight": 60,
+      "severity": "HIGH",
+      "enabled": true,
+      "force_block": false
+    },
+    {
+      "id": "AMOUNT_ANOMALY",
+      "name": "Amount Anomaly",
+      "description": "Transaction amount exceeds statistical 3\u03c3 threshold for cardholder",
+      "weight": 50,
+      "severity": "MEDIUM",
+      "enabled": true,
+      "force_block": false
+    },
+    {
+      "id": "GEO_ORIGIN_MISMATCH",
+      "name": "Geo Origin Mismatch",
+      "description": "Transaction country does not match cardholder billing country",
+      "weight": 40,
+      "severity": "MEDIUM",
+      "enabled": true,
+      "force_block": false
+    },
+    {
+      "id": "UNUSUAL_HOUR",
+      "name": "Dormant Hours Transaction",
+      "description": "Transaction initiated during cardholder's historical dormant hours (2am - 5am local)",
+      "weight": 35,
+      "severity": "LOW",
+      "enabled": true,
+      "force_block": false
+    },
+    {
+      "id": "NEW_ACCOUNT",
+      "name": "New Account Activity",
+      "description": "High-value activity on accounts provisioned within the last 7 days",
+      "weight": 30,
+      "severity": "LOW",
+      "enabled": true,
+      "force_block": false
+    },
+    {
+      "id": "CHANNEL_RISK",
+      "name": "Channel Risk",
+      "description": "Transaction submitted through high-risk unauthenticated web channel",
+      "weight": 35,
+      "severity": "LOW",
+      "enabled": true,
+      "force_block": false
+    }
+  ],
   "providers": {
     "cell_location": {
       "active_provider": "simulated",
@@ -54,5 +114,27 @@
       "allow_scraping": false,
       "fallback_to_mock": true
     }
+  },
+  "velocity": {
+    "velocity_1hr_threshold": 5,
+    "velocity_24hr_threshold": 15,
+    "velocity_7d_threshold": 40,
+    "amount_spike_pct": 300.0,
+    "amount_zscore_threshold": 3.0
+  },
+  "time": {
+    "rapid_succession_mins": 2.0,
+    "burst_count_threshold": 3,
+    "burst_window_mins": 5.0,
+    "dormant_days_threshold": 60,
+    "night_hours": [
+      23,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
   }
 }

@@ -382,6 +382,7 @@ class QuarantineManager:
                 q_copy["sla_due_at"] = sla_due.strftime("%Y-%m-%dT%H:%M:%SZ")
                 q_copy["sla_deadline"] = sla_due.strftime("%Y-%m-%dT%H:%M:%SZ")
                 q_copy["sla_remaining_seconds"] = remaining_sec
+                q_copy["sla_remaining_minutes"] = round(remaining_sec / 60.0, 1)
                 q_copy["sla_countdown"] = countdown_str
                 q_copy["sla_status"] = sla_status
                 q_copy["is_sla_breached"] = is_breached
@@ -398,6 +399,7 @@ class QuarantineManager:
             is_open = st in ("QUARANTINED", "AT_RISK", "ESCALATED")
             is_br = x.get("is_sla_breached", False)
             rem_sec = x.get("sla_remaining_seconds", 999999)
+            q_copy["sla_remaining_minutes"] = round(remaining_sec / 60.0, 1)
             risk = float(x.get("risk_score") or x.get("score") or 0.0)
 
             if is_open and is_br:

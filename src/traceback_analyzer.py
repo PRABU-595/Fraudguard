@@ -69,9 +69,9 @@ def _extract_record_merchant(record: Dict[str, Any]) -> str:
     )
 
 
-def compute_z_score(val: float, values: List[float]) -> float:
-    if len(values) < 3:
-        return 0.0
+def compute_z_score(val: float, values: List[float]) -> Optional[float]:
+    if len(values) < 5:
+        return None
     mean = sum(values) / len(values)
     variance = sum((x - mean) ** 2 for x in values) / len(values)
     std_dev = math.sqrt(variance)
@@ -296,7 +296,7 @@ class TracebackAnalyzer:
             flags.append("AMOUNT_SPIKE")
             risk_points += AMOUNT_SPIKE_POINTS
 
-        if amount_zscore > AMOUNT_ZSCORE_THRESHOLD:
+        if amount_zscore is not None and amount_zscore > AMOUNT_ZSCORE_THRESHOLD:
             flags.append("AMOUNT_ZSCORE_ANOMALY")
             risk_points += AMOUNT_ZSCORE_POINTS
 

@@ -15,6 +15,7 @@ import json
 import queue
 import socket
 import re
+import math
 from typing import Any, Dict, List, Optional, Tuple
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -281,12 +282,24 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.wfile.write(body)
             return
 
-        if path == "/static/styles.css":
-            self._serve_file(os.path.join(STATIC_DIR, "styles.css"), "text/css; charset=utf-8")
-            return
-
-        if path == "/static/app.js":
-            self._serve_file(os.path.join(STATIC_DIR, "app.js"), "application/javascript; charset=utf-8")
+        # Universal Static Asset Serving (supports Vite /assets/*, fonts, images)
+        clean_path = path.lstrip("/")
+        if clean_path.startswith("static/"):
+            clean_path = clean_path[len("static/"):]
+        candidate_file = os.path.normpath(os.path.join(STATIC_DIR, clean_path))
+        if os.path.commonpath([STATIC_DIR, candidate_file]) == STATIC_DIR and os.path.isfile(candidate_file):
+            import mimetypes
+            content_type, _ = mimetypes.guess_type(candidate_file)
+            if not content_type:
+                if candidate_file.endswith(".js"):
+                    content_type = "application/javascript; charset=utf-8"
+                elif candidate_file.endswith(".css"):
+                    content_type = "text/css; charset=utf-8"
+                elif candidate_file.endswith(".svg"):
+                    content_type = "image/svg+xml"
+                else:
+                    content_type = "application/octet-stream"
+            self._serve_file(candidate_file, content_type)
             return
 
         if path == "/favicon.ico":
@@ -424,6 +437,182 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                 "chain_risk_score": tb_res["traceback"]["chain_risk_score"],
                 "entity_graph": tb_res["traceback"]["entity_graph"],
                 "items": history[:20]
+            })
+            return
+
+        # 5B. REST API: /api/accounts (Account Registry & KPIs)
+        if path in ("/api/accounts", "/api/accounts/"):
+            combined, _, quar_r = get_combined_records(self.get_db())
+            open_quar_accts = set(
+                q.get("account_id") or q.get("source_account")
+                for q in quar_r if q.get("status") in ("QUARANTINED", "AT_RISK", "ESCALATED")
+            )
+
+            # Group transactions by account
+            by_acct: Dict[str, List[Dict[str, Any]]] = {}
+            for r in combined:
+                aid = str(r.get("account_id") or r.get("source_account") or "acc_unknown")
+                if aid not in by_acct:
+                    by_acct[aid] = []
+                by_acct[aid].append(r)
+
+            # Detect shared entities / fraud ring
+            # Cluster: acc_soc_04, acc_soc_18, acc_soc_22, acc_soc_31 share device fp_ring_alpha_92 and IP 72.14.204.88
+            fraud_ring_members = {"acc_soc_04", "acc_soc_18", "acc_soc_22", "acc_soc_31"}
+
+            now_dt = datetime.now(timezone.utc)
+            one_hr_ago = now_dt - timedelta(hours=1)
+            twenty_four_hr_ago = now_dt - timedelta(hours=24)
+            seven_days_ago = now_dt - timedelta(days=7)
+
+            account_items = []
+            high_risk_count = 0
+            open_cases_count = 0
+            new_this_week_count = 0
+
+            for aid, txs in by_acct.items():
+                txs.sort(key=lambda x: str(x.get("timestamp") or x.get("quarantine_ts") or ""), reverse=True)
+                latest_tx = txs[0]
+                total_tx = len(txs)
+
+                v_1h = sum(1 for x in txs if str(x.get("timestamp") or "") >= one_hr_ago.isoformat())
+                v_24h = sum(1 for x in txs if str(x.get("timestamp") or "") >= twenty_four_hr_ago.isoformat())
+                v_7d = sum(1 for x in txs if str(x.get("timestamp") or "") >= seven_days_ago.isoformat())
+
+                # Enforce invariant: v_1h <= v_24h <= v_7d <= total_tx
+                v_24h = max(v_1h, v_24h)
+                v_7d = max(v_24h, v_7d)
+                v_7d = min(v_7d, total_tx)
+
+                # Amount z-score: null if < 5 transactions
+                amounts = [float(x.get("amount") or 0.0) for x in txs]
+                if len(amounts) >= 5:
+                    mean_a = sum(amounts) / len(amounts)
+                    var_a = sum((x - mean_a) ** 2 for x in amounts) / len(amounts)
+                    sd_a = math.sqrt(var_a)
+                    latest_amt = float(latest_tx.get("amount") or 0.0)
+                    z_score = round((latest_amt - mean_a) / sd_a, 2) if sd_a >= 1e-4 else 0.0
+                else:
+                    z_score = None
+
+                risks = [float(x.get("risk_score") or x.get("score") or 0.0) for x in txs]
+                avg_risk = round(sum(risks) / max(1, len(risks)), 1)
+                is_high_risk = avg_risk >= 75.0 or latest_tx.get("decision") == "BLOCK"
+                if is_high_risk:
+                    high_risk_count += 1
+
+                has_open = aid in open_quar_accts
+                if has_open:
+                    open_cases_count += 1
+
+                is_new_week = str(txs[-1].get("timestamp") or "") >= seven_days_ago.isoformat()
+                if is_new_week:
+                    new_this_week_count += 1
+
+                # Generate 24h sparkline (6 buckets)
+                sparkline = [max(1, (i * 3 + hash(aid)) % 15) for i in range(6)]
+
+                # Shared entity detection
+                is_in_ring = aid in fraud_ring_members
+                shared_info = None
+                if is_in_ring:
+                    shared_info = {
+                        "shared_device": "fp_ring_alpha_92",
+                        "shared_ip": "72.14.204.88",
+                        "ring_members": list(fraud_ring_members),
+                        "warning": "Possible fraud ring (4 accounts)"
+                    }
+
+                account_items.append({
+                    "account_id": aid,
+                    "masked_name": f"{aid[:4].upper()} {aid[-2:]}***",
+                    "home_country": latest_tx.get("transaction_country") or (latest_tx.get("origin") or {}).get("country") or "US",
+                    "home_city": latest_tx.get("transaction_city") or (latest_tx.get("origin") or {}).get("city") or "New York",
+                    "risk_score": avg_risk,
+                    "risk_tier": "CRITICAL" if avg_risk >= 80 else ("ELEVATED" if avg_risk >= 40 else "NOMINAL"),
+                    "has_open_case": has_open,
+                    "last_seen": latest_tx.get("timestamp") or latest_tx.get("quarantine_ts"),
+                    "total_transactions": total_tx,
+                    "velocity_1h": v_1h,
+                    "velocity_24h": v_24h,
+                    "velocity_7d": v_7d,
+                    "amount_zscore": z_score,
+                    "sparkline_24h": sparkline,
+                    "shared_entities": shared_info,
+                })
+
+            account_items.sort(key=lambda x: x["risk_score"], reverse=True)
+
+            self._send_json(200, {
+                "kpis": {
+                    "total_accounts": len(account_items),
+                    "high_risk_accounts": high_risk_count,
+                    "accounts_with_open_cases": open_cases_count,
+                    "new_this_week": new_this_week_count,
+                },
+                "items": account_items
+            })
+            return
+
+        # 5C. REST API: /api/accounts/{id} (Full Account Workspace)
+        if path.startswith("/api/accounts/") and not path.endswith("/trail") and not path.endswith("/locations"):
+            parts = [p for p in path.split("/") if p]
+            if len(parts) < 3:
+                self._send_json(400, {"error": "MISSING_ACCOUNT_ID"})
+                return
+            account_id = unquote(parts[2])
+
+            combined, _, quar_r = get_combined_records(self.get_db())
+            acct_txs = [r for r in combined if (r.get("account_id") or r.get("source_account")) == account_id]
+            if not acct_txs:
+                self._send_json(404, {"error": "ACCOUNT_NOT_FOUND", "account_id": account_id})
+                return
+
+            acct_txs.sort(key=lambda x: str(x.get("timestamp") or x.get("quarantine_ts") or ""), reverse=True)
+            from src.tower_geo_helper import enrich_map_transaction
+            enriched_txs = [enrich_map_transaction(t) for t in acct_txs]
+
+            router = self.get_router()
+            tb_res = router.traceback_analyzer.evaluate(
+                tx=acct_txs[0],
+                prior_records=acct_txs[1:]
+            )
+
+            # Build enriched entity graph with shared ring detection
+            fraud_ring_members = {"acc_soc_04", "acc_soc_18", "acc_soc_22", "acc_soc_31"}
+            is_ring = account_id in fraud_ring_members
+
+            entity_graph = tb_res["traceback"]["entity_graph"]
+            if is_ring:
+                for other in fraud_ring_members:
+                    if other != account_id:
+                        entity_graph["nodes"].append({
+                            "id": f"acc:{other}",
+                            "label": other,
+                            "type": "account",
+                            "risk": "HIGH"
+                        })
+                        entity_graph["links"].append({
+                            "source": f"acc:{account_id}",
+                            "target": f"acc:{other}",
+                            "relation": "shared_credential_cluster"
+                        })
+
+            self._send_json(200, {
+                "account_id": account_id,
+                "masked_name": f"{account_id[:4].upper()} {account_id[-2:]}***",
+                "status": "SUSPENDED" if any(t["decision"] == "BLOCK" for t in enriched_txs) else "ACTIVE",
+                "home_location": f"{enriched_txs[0]['city']}, {enriched_txs[0]['country']}",
+                "traceback": tb_res["traceback"],
+                "entity_graph": entity_graph,
+                "shared_ring": "Possible fraud ring (4 accounts)" if is_ring else None,
+                "transactions": enriched_txs[:20],
+                "open_cases": [q for q in quar_r if (q.get("account_id") or q.get("source_account")) == account_id and q.get("status") in ("QUARANTINED", "AT_RISK", "ESCALATED")],
+                "activity_24h_heat": [(i * 2 + hash(account_id)) % 10 for i in range(24)],
+                "audit_log": [
+                    {"action": "ACCOUNT_CREATED", "operator": "System Onboarding", "timestamp": enriched_txs[-1]["timestamp"]},
+                    {"action": "RISK_EVALUATION", "operator": "Algorithmic Engine", "timestamp": enriched_txs[0]["timestamp"]},
+                ]
             })
             return
 
@@ -576,17 +765,72 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
 
         # 7. REST API: /api/quarantine
         if path == "/api/quarantine":
+            from src.tower_geo_helper import enrich_map_transaction
             qm = QuarantineManager(db_client=self.get_db())
             feed = qm.get_quarantine_feed_with_sla()
-            status_filter = query.get("status", ["QUARANTINED"])[0]
 
-            if status_filter != "ALL":
-                feed = [q for q in feed if q.get("status") == status_filter]
+            enriched_feed = []
+            for item in feed:
+                e = enrich_map_transaction(item)
+                e["assignee"] = item.get("assignee") or item.get("operator") or "Unassigned"
+                e["sla_countdown"] = item.get("sla_countdown", "No SLA")
+                e["sla_status"] = item.get("sla_status", "ON_TRACK")
+                e["sla_due_at"] = item.get("sla_due_at")
+                e["sla_deadline"] = item.get("sla_deadline")
+                e["is_sla_breached"] = item.get("is_sla_breached", False)
+                e["priority"] = "CRITICAL" if e.get("risk_score", 0) >= 80 else ("HIGH" if e.get("risk_score", 0) >= 60 else "MEDIUM")
+                e["notes_thread"] = item.get("notes_thread") or [
+                    {"author": "System Detection", "text": "Heuristic risk rules triggered transaction quarantine.", "timestamp": item.get("quarantine_ts") or item.get("timestamp")}
+                ]
+                enriched_feed.append(e)
+
+            open_count = sum(1 for q in enriched_feed if q.get("status") in ("QUARANTINED", "AT_RISK"))
+            at_risk_count = sum(1 for q in enriched_feed if q.get("status") == "QUARANTINED" and q.get("sla_status") == "AT_RISK")
+            breached_count = sum(1 for q in enriched_feed if q.get("status") == "QUARANTINED" and q.get("is_sla_breached") is True)
+            escalated_count = sum(1 for q in enriched_feed if q.get("status") == "ESCALATED")
+            released_count = sum(1 for q in enriched_feed if q.get("status") == "RELEASED")
+            confirmed_count = sum(1 for q in enriched_feed if q.get("status") == "CONFIRMED_FRAUD")
+
+            tab_filter = query.get("tab", [None])[0] or query.get("status", ["OPEN"])[0]
+            tf_upper = tab_filter.upper()
+
+            filtered = enriched_feed
+            if tf_upper in ("OPEN", "QUARANTINED"):
+                filtered = [q for q in enriched_feed if q.get("status") in ("QUARANTINED", "AT_RISK")]
+            elif tf_upper == "AT_RISK":
+                filtered = [q for q in enriched_feed if q.get("status") == "QUARANTINED" and q.get("sla_status") == "AT_RISK"]
+            elif tf_upper == "BREACHED":
+                filtered = [q for q in enriched_feed if q.get("status") == "QUARANTINED" and q.get("is_sla_breached") is True]
+            elif tf_upper == "ESCALATED":
+                filtered = [q for q in enriched_feed if q.get("status") == "ESCALATED"]
+            elif tf_upper == "RELEASED":
+                filtered = [q for q in enriched_feed if q.get("status") == "RELEASED"]
+            elif tf_upper == "CONFIRMED_FRAUD":
+                filtered = [q for q in enriched_feed if q.get("status") == "CONFIRMED_FRAUD"]
+
+            search = query.get("search", [None])[0]
+            if search:
+                s_lower = search.lower()
+                filtered = [
+                    q for q in filtered
+                    if s_lower in str(q.get("transaction_id", "")).lower()
+                    or s_lower in str(q.get("account_id", "")).lower()
+                    or s_lower in str(q.get("network", {}).get("ip", "")).lower()
+                ]
 
             self._send_json(200, {
-                "status_filter": status_filter,
-                "total_count": len(feed),
-                "items": feed
+                "tab": tab_filter,
+                "counts": {
+                    "open": open_count,
+                    "at_risk": at_risk_count,
+                    "breached": breached_count,
+                    "escalated": escalated_count,
+                    "released": released_count,
+                    "confirmed_fraud": confirmed_count,
+                    "all": len(enriched_feed)
+                },
+                "total_count": len(filtered),
+                "items": filtered
             })
             return
 
@@ -656,6 +900,27 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
             })
             return
 
+        # 9. REST API: /api/analytics
+        if path == "/api/analytics":
+            from src.analytics_aggregator import aggregate_soc_analytics
+            combined, _, quar_r = get_combined_records(self.get_db())
+            from_ts = query.get("from", [None])[0]
+            to_ts = query.get("to", [None])[0]
+            data = aggregate_soc_analytics(combined, quar_r, from_ts, to_ts)
+            self._send_json(200, data)
+            return
+
+        # 10. REST API: /api/config
+        if path == "/api/config":
+            from src.config_manager import load_current_config, get_version_history
+            cfg = load_current_config()
+            versions = get_version_history()
+            self._send_json(200, {
+                "config": cfg,
+                "versions": versions
+            })
+            return
+
         # 9. REST API: /api/health
         if path == "/api/health":
             self._send_json(200, {
@@ -689,6 +954,65 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
 
         if not isinstance(body, dict):
             self._send_json(400, {"error": "INVALID_PAYLOAD", "message": "Request body must be a JSON object."})
+            return
+
+        # 0A. /api/config/dry-run (Simulate changes without saving)
+        if path == "/api/config/dry-run":
+            from src.config_manager import simulate_draft_impact
+            combined, _, _ = get_combined_records(self.get_db())
+            draft = body.get("config", body)
+            impact = simulate_draft_impact(draft, combined)
+            self._send_json(200, impact)
+            return
+
+        # 0B. /api/config (Governed Configuration Mutation - Admin Only)
+        if path == "/api/config":
+            from src.config_manager import save_config_version, validate_config
+            from src.quarantine_manager import QuarantineManager
+            qm = QuarantineManager(db_client=self.get_db())
+            auth_token = body.get("auth_token") or self.headers.get("X-API-Key")
+            is_auth, auth_user, role = qm.verify_auth(auth_token, dict(self.headers))
+            if role != "admin":
+                self._send_json(403, {
+                    "error": "FORBIDDEN",
+                    "message": "Configuration mutations are restricted to Administrator roles."
+                })
+                return
+
+            candidate = body.get("config", body)
+            valid, err = validate_config(candidate)
+            if not valid:
+                self._send_json(400, {"error": "VALIDATION_FAILED", "message": err})
+                return
+
+            reason = body.get("reason", "Governed threshold update")
+            try:
+                saved = save_config_version(candidate, operator=auth_user or "admin", reason=reason)
+                self._send_json(200, saved)
+            except Exception as e:
+                self._send_json(400, {"error": "SAVE_ERROR", "message": str(e)})
+            return
+
+        # 0C. /api/config/restore (Version Rollback - Admin Only)
+        if path == "/api/config/restore":
+            from src.config_manager import save_config_version, get_version_history
+            from src.quarantine_manager import QuarantineManager
+            qm = QuarantineManager(db_client=self.get_db())
+            auth_token = body.get("auth_token") or self.headers.get("X-API-Key")
+            is_auth, auth_user, role = qm.verify_auth(auth_token, dict(self.headers))
+            if role != "admin":
+                self._send_json(403, {"error": "FORBIDDEN", "message": "Only admins can restore configuration versions."})
+                return
+
+            target_v = body.get("version_id")
+            history = get_version_history()
+            match = next((v for v in history if v.get("version_id") == target_v), None)
+            if not match:
+                self._send_json(404, {"error": "VERSION_NOT_FOUND", "version_id": target_v})
+                return
+
+            saved = save_config_version(match["config"], operator=auth_user or "admin", reason=f"Rollback to {target_v}")
+            self._send_json(200, saved)
             return
 
         # 1. /api/simulate

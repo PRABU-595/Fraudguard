@@ -120,6 +120,8 @@ class TestPhase2Backend(unittest.TestCase):
             {"transaction_id": "tx_h1", "timestamp": "2026-10-20T10:00:00Z", "amount": 50.0, "merchant": "Grocery", "origin": {"ip_address": "192.0.2.1"}},
             {"transaction_id": "tx_h2", "timestamp": "2026-10-22T10:00:00Z", "amount": 55.0, "merchant": "Gas", "origin": {"ip_address": "192.0.2.1"}},
             {"transaction_id": "tx_h3", "timestamp": "2026-10-24T10:00:00Z", "amount": 48.0, "merchant": "Coffee", "origin": {"ip_address": "192.0.2.1"}},
+            {"transaction_id": "tx_h4", "timestamp": "2026-10-21T10:00:00Z", "amount": 52.0, "merchant": "Bakery", "origin": {"ip_address": "192.0.2.1"}},
+            {"transaction_id": "tx_h5", "timestamp": "2026-10-23T10:00:00Z", "amount": 51.0, "merchant": "Market", "origin": {"ip_address": "192.0.2.1"}},
         ]
         # Massive anomaly: $1000 vs ~$51 baseline
         curr_tx = {
@@ -133,7 +135,7 @@ class TestPhase2Backend(unittest.TestCase):
         res = tb.evaluate(curr_tx, prior_records=history)
         self.assertIn("AMOUNT_ZSCORE_ANOMALY", res["flags"])
         self.assertGreater(res["traceback"]["amount_zscore"], 3.0)
-        self.assertEqual(res["traceback"]["velocity_7d"], 4)
+        self.assertEqual(res["traceback"]["velocity_7d"], 6)
 
         # Entity graph verification
         graph = res["traceback"]["entity_graph"]

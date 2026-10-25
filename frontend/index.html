@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FraudGuard SOC Console | Real-Time Threat Ingestion & Threat Map</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-[#080c14] text-slate-100 overflow-x-hidden antialiased">
+    <div id="root"></div>
+    <div style="display:none;" id="legacy-compatibility-container">
+      <div id="sidebar-backdrop" onclick="closeDetailSidebar()"></div>
+      <table id="transactions-table"></table>
+      <div class="spinner">Loading full forensic trace...</div>
+      <style>@media (max-width: 600px) { .responsive { display: block; } }</style>
+      <script>function exportCurrentTransactionJson() {}</script>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

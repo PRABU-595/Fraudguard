@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-slate-100 font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200;
+    overflow-x: hidden;
+  }
+}
+
+/* Custom minimal scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #080c14;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Leaflet dark theme tweaks */
+.leaflet-container {
+  background: #080c14 !important;
+  font-family: inherit !important;
+}
+.leaflet-bar {
+  border: 1px solid #1e293b !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+.leaflet-bar a {
+  background-color: #0d131f !important;
+  color: #94a3b8 !important;
+  border-bottom: 1px solid #1e293b !important;
+}
+.leaflet-bar a:hover {
+  background-color: #172238 !important;
+  color: #38bdf8 !important;
+}
+.leaflet-popup-content-wrapper {
+  background: #0d131f !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6) !important;
+}
+.leaflet-popup-tip {
+  background: #0d131f !important;
+}
+
+/* Cluster Marker styling */
+.cluster-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 700;
+  font-family: ui-monospace, monospace;
+  box-shadow: 0 0 12px rgba(0,0,0,0.5);
+  transition: transform 0.15s ease;
+}
+.cluster-marker:hover {
+  transform: scale(1.1);
+}
+.cluster-red {
+  background: rgba(239, 68, 68, 0.85);
+  border: 2px solid #fca5a5;
+  color: white;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.6);
+}
+.cluster-amber {
+  background: rgba(245, 158, 11, 0.85);
+  border: 2px solid #fcd34d;
+  color: #080c14;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.5);
+}
+.cluster-green {
+  background: rgba(16, 185, 129, 0.85);
+  border: 2px solid #6ee7b7;
+  color: #080c14;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+}
+
+/* Pulsing markers */
+@keyframes ringPulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.35); opacity: 0.2; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+.pulse-ring {
+  animation: ringPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

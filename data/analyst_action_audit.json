@@ -1805,5 +1805,126 @@
     "reason": "Review complete",
     "notes": "Verified legitimate travel with cardholder",
     "timestamp": "2026-10-24T18:36:45Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-10-25T06:26:31Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-10-25T06:27:19Z"
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "action": "RELEASE",
+    "previous_status": "QUARANTINED",
+    "new_status": "RELEASED",
+    "operator": "admin_user",
+    "role": "admin",
+    "reason": "Bulk review",
+    "notes": "Bulk review",
+    "timestamp": "2026-10-25T07:24:35Z"
+  },
+  {
+    "transaction_id": "tx_q_act_test",
+    "action": "CONFIRM_FRAUD",
+    "previous_status": "CONFIRMED_FRAUD",
+    "new_status": "CONFIRMED_FRAUD",
+    "operator": "analyst_test",
+    "role": "analyst",
+    "reason": "Confirmed malicious Tor relay node",
+    "notes": "Confirmed malicious Tor relay node",
+    "timestamp": "2026-10-25T08:37:03Z"
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "action": "RELEASE",
+    "previous_status": "QUARANTINED",
+    "new_status": "RELEASED",
+    "operator": "admin_user",
+    "role": "admin",
+    "reason": "Bulk review",
+    "notes": "Bulk review",
+    "timestamp": "2026-10-25T08:37:04Z"
+  },
+  {
+    "transaction_id": "tx_q_act_test",
+    "action": "CONFIRM_FRAUD",
+    "previous_status": "CONFIRMED_FRAUD",
+    "new_status": "CONFIRMED_FRAUD",
+    "operator": "analyst_test",
+    "role": "analyst",
+    "reason": "Confirmed malicious Tor relay node",
+    "notes": "Confirmed malicious Tor relay node",
+    "timestamp": "2026-10-25T08:38:58Z"
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "action": "RELEASE",
+    "previous_status": "QUARANTINED",
+    "new_status": "RELEASED",
+    "operator": "admin_user",
+    "role": "admin",
+    "reason": "Bulk review",
+    "notes": "Bulk review",
+    "timestamp": "2026-10-25T08:39:06Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-10-25T08:41:29Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-10-25T08:43:38Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-10-25T08:43:47Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-10-25T08:45:54Z"
   }
 ]

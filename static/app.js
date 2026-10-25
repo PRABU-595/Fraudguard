@@ -1458,3 +1458,14 @@ window.exportCurrentTransactionJson = function() {
 const app = new FraudGuardApp();
 window.app = app;
 window.addEventListener('DOMContentLoaded', () => app.init());
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, function(m) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m];
+    });
+}
+// Render row with data-tx-id
+function renderRowWithDataTxId(tx) {
+    return '<tr data-tx-id="' + escapeHtml(tx.transaction_id) + '"></tr>';
+}

@@ -53590,5 +53590,1970 @@
     "ttl_epoch": 1793471787,
     "ttl_expiry": 1795458987,
     "updated_ts": "2026-10-24T18:36:27Z"
+  },
+  {
+    "transaction_id": "tx_sim_1792909089299_2",
+    "account_id": "acc_travel_61",
+    "source_account": "acc_travel_61",
+    "destination_account": "acc_merchant_uk",
+    "timestamp": "2026-10-25T06:18:09Z",
+    "quarantine_ts": "2026-10-25T06:18:09Z",
+    "amount": 120.0,
+    "txn_type": "CREDIT",
+    "merchant": "acc_merchant_uk",
+    "merchant_category": "CREDIT",
+    "reason_codes": [
+      "GEO_ORIGIN_MISMATCH",
+      "IMPOSSIBLE_TRAVEL",
+      "INTERNATIONAL_TRANSACTION",
+      "NEW_BENEFICIARY_DETECTED"
+    ],
+    "flags": [
+      "GEO_ORIGIN_MISMATCH",
+      "IMPOSSIBLE_TRAVEL",
+      "INTERNATIONAL_TRANSACTION",
+      "NEW_BENEFICIARY_DETECTED"
+    ],
+    "triggered_rules": [
+      "GEO_ORIGIN_MISMATCH",
+      "IMPOSSIBLE_TRAVEL",
+      "INTERNATIONAL_TRANSACTION",
+      "NEW_BENEFICIARY_DETECTED"
+    ],
+    "risk_score": 85,
+    "total_risk": 0.85,
+    "decision": "BLOCK",
+    "action": "BLOCK",
+    "status": "QUARANTINED",
+    "origin": {
+      "country": "GB",
+      "city": "London",
+      "region": "ENG",
+      "isp": "British Telecom",
+      "asn": "AS2856 British Telecommunications PLC",
+      "connection_type": "broadband",
+      "is_vpn": false,
+      "is_proxy": false,
+      "is_tor": false,
+      "is_datacenter": false,
+      "coordinates": {
+        "lat": 51.5074,
+        "lon": -0.1278
+      },
+      "timezone": "Europe/London",
+      "ip_address": "198.51.100.20",
+      "threat_level": "MEDIUM"
+    },
+    "traceback": {
+      "account_transaction_count": 2,
+      "previous_transaction_id": "tx_sim_1792909089299_2_seed",
+      "previous_transaction_ts": "2026-10-25T06:15:09Z",
+      "previous_amount": 45.0,
+      "previous_merchant": "acc_merchant_us",
+      "previous_location": "New York",
+      "chain_risk_score": 57.5,
+      "velocity_1hr": 2,
+      "velocity_24hr": 2,
+      "velocity_7d": 2,
+      "amount_delta_pct": 166.67,
+      "amount_zscore": 0.0,
+      "entity_graph": {
+        "nodes": [
+          {
+            "id": "acc:acc_travel_61",
+            "label": "acc_travel_61",
+            "type": "account",
+            "risk": "LOW"
+          },
+          {
+            "id": "dev:fp_default",
+            "label": "fp_default",
+            "type": "device",
+            "risk": "LOW"
+          },
+          {
+            "id": "ip:192.0.2.1",
+            "label": "192.0.2.1",
+            "type": "ip",
+            "risk": "LOW"
+          },
+          {
+            "id": "merch:acc_merchant_uk",
+            "label": "acc_merchant_uk",
+            "type": "merchant",
+            "risk": "LOW"
+          },
+          {
+            "id": "dev:fp_demo_default",
+            "label": "fp_demo_default",
+            "type": "device",
+            "risk": "LOW"
+          },
+          {
+            "id": "merch:acc_merchant_us",
+            "label": "acc_merchant_us",
+            "type": "merchant",
+            "risk": "LOW"
+          }
+        ],
+        "links": [
+          {
+            "source": "acc:acc_travel_61",
+            "target": "dev:fp_default",
+            "relation": "used_device"
+          },
+          {
+            "source": "acc:acc_travel_61",
+            "target": "ip:192.0.2.1",
+            "relation": "originated_from"
+          },
+          {
+            "source": "acc:acc_travel_61",
+            "target": "merch:acc_merchant_uk",
+            "relation": "transacted_with"
+          },
+          {
+            "source": "acc:acc_travel_61",
+            "target": "dev:fp_demo_default",
+            "relation": "used_device"
+          },
+          {
+            "source": "acc:acc_travel_61",
+            "target": "ip:192.0.2.1",
+            "relation": "originated_from"
+          },
+          {
+            "source": "acc:acc_travel_61",
+            "target": "merch:acc_merchant_us",
+            "relation": "transacted_with"
+          }
+        ]
+      }
+    },
+    "time_analysis": {
+      "transaction_hour": 6,
+      "transaction_day_of_week": 6,
+      "local_time_formatted": "2026-10-25 06:18:09",
+      "timezone": "Europe/London",
+      "is_night_transaction": false,
+      "is_weekend": true,
+      "account_typical_hours": [
+        2
+      ],
+      "hour_anomaly": true,
+      "time_since_last_txn_mins": 3.0,
+      "burst_count_5m": 2,
+      "hourly_distribution_24h": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "velocity_sparkline": []
+    },
+    "location_check": {
+      "account_registered_city": "New York",
+      "account_registered_country": "US",
+      "account_registered_coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "transaction_city": "London",
+      "transaction_country": "GB",
+      "transaction_coordinates": {
+        "lat": 51.5074,
+        "lon": -0.1278
+      },
+      "previous_transaction_coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "distance_km": 5570.22,
+      "is_international": true,
+      "is_impossible_travel": true,
+      "travel_distance_km": 5570.22,
+      "travel_speed_kmh": 111404.4,
+      "speed_threshold_kmh": 900.0,
+      "latest_location": {
+        "source": "carrier_cell_tower",
+        "source_label": "Telecom Carrier Cell Tower",
+        "is_simulated": true,
+        "city": "London",
+        "country": "US",
+        "coordinates": {
+          "lat": 51.5074,
+          "lon": -0.1278
+        },
+        "accuracy_meters": 65,
+        "freshness_seconds": 0.5,
+        "timestamp": "2026-10-25T06:18:09Z"
+      }
+    },
+    "pii_enrichment": {
+      "data_source": "MOCK_DEMO_DATA",
+      "enrichment_status": "FOUND",
+      "is_simulated": true,
+      "confidence": 0.84,
+      "source": "SIMULATED_CELL_TOWER+MOCK_IDENTITY_STORE",
+      "fetched_at": "2026-10-25T06:18:09Z",
+      "account_holder_name": "Alexander Wright (61)",
+      "account_holder_masked": "A*******r W****t (**)",
+      "account_age_days": 540,
+      "linked_phone_verified": true,
+      "email_verified": true,
+      "sim_swap_last_7d": false,
+      "social_profile_risk_score": 0.08,
+      "social_reputation": "ESTABLISHED",
+      "device_fingerprint": "fp_demo_default",
+      "last_known_location": {
+        "source": "SIMULATED_CELL_TOWER",
+        "is_simulated": true,
+        "city": "London",
+        "lat": 51.5074,
+        "lon": -0.1278,
+        "accuracy_meters": 65,
+        "timestamp": "2026-10-25T06:18:09Z"
+      },
+      "location_matches_transaction": true
+    },
+    "original_payload": {
+      "transaction_id": "tx_sim_1792909089299_2",
+      "account_id": "acc_travel_61",
+      "source_account": "acc_travel_61",
+      "destination_account": "acc_merchant_uk",
+      "timestamp": "2026-10-25T06:18:09Z",
+      "amount": 120.0,
+      "currency": "GBP",
+      "txn_type": "CREDIT",
+      "merchant": "acc_merchant_uk",
+      "merchant_category": "CREDIT",
+      "transaction_city": "London",
+      "transaction_country": "GB",
+      "rule_score": 0.7,
+      "ml_score": 0.0,
+      "total_risk": 0.85,
+      "risk_score": 85,
+      "decision": "BLOCK",
+      "action": "BLOCK",
+      "status": "QUARANTINED",
+      "http_status": 202,
+      "triggered_rules": [
+        "GEO_ORIGIN_MISMATCH",
+        "IMPOSSIBLE_TRAVEL",
+        "INTERNATIONAL_TRANSACTION",
+        "NEW_BENEFICIARY_DETECTED"
+      ],
+      "flags": [
+        "GEO_ORIGIN_MISMATCH",
+        "IMPOSSIBLE_TRAVEL",
+        "INTERNATIONAL_TRANSACTION",
+        "NEW_BENEFICIARY_DETECTED"
+      ],
+      "score_breakdown": [
+        {
+          "rule": "GEO_ORIGIN_MISMATCH",
+          "points": 10,
+          "category": "LOW"
+        },
+        {
+          "rule": "IMPOSSIBLE_TRAVEL",
+          "points": 40,
+          "category": "HIGH"
+        },
+        {
+          "rule": "INTERNATIONAL_TRANSACTION",
+          "points": 10,
+          "category": "LOW"
+        },
+        {
+          "rule": "NEW_BENEFICIARY_DETECTED",
+          "points": 10,
+          "category": "LOW"
+        }
+      ],
+      "attributes": {
+        "device_fingerprint": "fp_demo_default",
+        "user_agent": "FraudGuard Mobile SDK 2.4",
+        "browser": "Chrome 122",
+        "os": "Windows 11",
+        "screen_resolution": "1920x1080",
+        "session_id": "sess_tx_sim_179",
+        "payment_channel": "MOBILE_APP",
+        "merchant_category_code": "5411",
+        "currency": "GBP",
+        "is_new_device": false,
+        "is_new_beneficiary": true,
+        "timezone_mismatch": false
+      },
+      "origin": {
+        "country": "GB",
+        "city": "London",
+        "region": "ENG",
+        "isp": "British Telecom",
+        "asn": "AS2856 British Telecommunications PLC",
+        "connection_type": "broadband",
+        "is_vpn": false,
+        "is_proxy": false,
+        "is_tor": false,
+        "is_datacenter": false,
+        "coordinates": {
+          "lat": 51.5074,
+          "lon": -0.1278
+        },
+        "timezone": "Europe/London",
+        "ip_address": "198.51.100.20",
+        "threat_level": "MEDIUM"
+      },
+      "traceback": {
+        "account_transaction_count": 2,
+        "previous_transaction_id": "tx_sim_1792909089299_2_seed",
+        "previous_transaction_ts": "2026-10-25T06:15:09Z",
+        "previous_amount": 45.0,
+        "previous_merchant": "acc_merchant_us",
+        "previous_location": "New York",
+        "chain_risk_score": 57.5,
+        "velocity_1hr": 2,
+        "velocity_24hr": 2,
+        "velocity_7d": 2,
+        "amount_delta_pct": 166.67,
+        "amount_zscore": 0.0,
+        "entity_graph": {
+          "nodes": [
+            {
+              "id": "acc:acc_travel_61",
+              "label": "acc_travel_61",
+              "type": "account",
+              "risk": "LOW"
+            },
+            {
+              "id": "dev:fp_default",
+              "label": "fp_default",
+              "type": "device",
+              "risk": "LOW"
+            },
+            {
+              "id": "ip:192.0.2.1",
+              "label": "192.0.2.1",
+              "type": "ip",
+              "risk": "LOW"
+            },
+            {
+              "id": "merch:acc_merchant_uk",
+              "label": "acc_merchant_uk",
+              "type": "merchant",
+              "risk": "LOW"
+            },
+            {
+              "id": "dev:fp_demo_default",
+              "label": "fp_demo_default",
+              "type": "device",
+              "risk": "LOW"
+            },
+            {
+              "id": "merch:acc_merchant_us",
+              "label": "acc_merchant_us",
+              "type": "merchant",
+              "risk": "LOW"
+            }
+          ],
+          "links": [
+            {
+              "source": "acc:acc_travel_61",
+              "target": "dev:fp_default",
+              "relation": "used_device"
+            },
+            {
+              "source": "acc:acc_travel_61",
+              "target": "ip:192.0.2.1",
+              "relation": "originated_from"
+            },
+            {
+              "source": "acc:acc_travel_61",
+              "target": "merch:acc_merchant_uk",
+              "relation": "transacted_with"
+            },
+            {
+              "source": "acc:acc_travel_61",
+              "target": "dev:fp_demo_default",
+              "relation": "used_device"
+            },
+            {
+              "source": "acc:acc_travel_61",
+              "target": "ip:192.0.2.1",
+              "relation": "originated_from"
+            },
+            {
+              "source": "acc:acc_travel_61",
+              "target": "merch:acc_merchant_us",
+              "relation": "transacted_with"
+            }
+          ]
+        }
+      },
+      "time_analysis": {
+        "transaction_hour": 6,
+        "transaction_day_of_week": 6,
+        "local_time_formatted": "2026-10-25 06:18:09",
+        "timezone": "Europe/London",
+        "is_night_transaction": false,
+        "is_weekend": true,
+        "account_typical_hours": [
+          2
+        ],
+        "hour_anomaly": true,
+        "time_since_last_txn_mins": 3.0,
+        "burst_count_5m": 2,
+        "hourly_distribution_24h": [
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "velocity_sparkline": []
+      },
+      "location_check": {
+        "account_registered_city": "New York",
+        "account_registered_country": "US",
+        "account_registered_coordinates": {
+          "lat": 40.7128,
+          "lon": -74.006
+        },
+        "transaction_city": "London",
+        "transaction_country": "GB",
+        "transaction_coordinates": {
+          "lat": 51.5074,
+          "lon": -0.1278
+        },
+        "previous_transaction_coordinates": {
+          "lat": 40.7128,
+          "lon": -74.006
+        },
+        "distance_km": 5570.22,
+        "is_international": true,
+        "is_impossible_travel": true,
+        "travel_distance_km": 5570.22,
+        "travel_speed_kmh": 111404.4,
+        "speed_threshold_kmh": 900.0,
+        "latest_location": {
+          "source": "carrier_cell_tower",
+          "source_label": "Telecom Carrier Cell Tower",
+          "is_simulated": true,
+          "city": "London",
+          "country": "US",
+          "coordinates": {
+            "lat": 51.5074,
+            "lon": -0.1278
+          },
+          "accuracy_meters": 65,
+          "freshness_seconds": 0.5,
+          "timestamp": "2026-10-25T06:18:09Z"
+        }
+      },
+      "pii_enrichment": {
+        "data_source": "MOCK_DEMO_DATA",
+        "enrichment_status": "FOUND",
+        "is_simulated": true,
+        "confidence": 0.84,
+        "source": "SIMULATED_CELL_TOWER+MOCK_IDENTITY_STORE",
+        "fetched_at": "2026-10-25T06:18:09Z",
+        "account_holder_name": "Alexander Wright (61)",
+        "account_holder_masked": "A*******r W****t (**)",
+        "account_age_days": 540,
+        "linked_phone_verified": true,
+        "email_verified": true,
+        "sim_swap_last_7d": false,
+        "social_profile_risk_score": 0.08,
+        "social_reputation": "ESTABLISHED",
+        "device_fingerprint": "fp_demo_default",
+        "last_known_location": {
+          "source": "SIMULATED_CELL_TOWER",
+          "is_simulated": true,
+          "city": "London",
+          "lat": 51.5074,
+          "lon": -0.1278,
+          "accuracy_meters": 65,
+          "timestamp": "2026-10-25T06:18:09Z"
+        },
+        "location_matches_transaction": true
+      },
+      "execution_ms": 79.02
+    },
+    "auto_release_after": "2026-10-26T06:18:09Z",
+    "sla_due_at": "2026-10-25T07:18:09Z",
+    "analyst_notes": null,
+    "action_history": [],
+    "ttl_epoch": 1793513889,
+    "ttl_expiry": 1795501089
+  },
+  {
+    "transaction_id": "tx_map_04_3",
+    "account_id": "acc_soc_04",
+    "source_account": "acc_soc_04",
+    "destination_account": "acc_merch_1374",
+    "amount": 223.37,
+    "currency": "JPY",
+    "txn_type": "DEBIT",
+    "channel": "POS",
+    "origin_ip": "185.220.101.42",
+    "transaction_city": "Tokyo",
+    "transaction_country": "JP",
+    "lat": 35.671031,
+    "lon": 139.63901,
+    "timestamp": "2026-10-25T00:11:33Z",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 98.0,
+    "flags": [
+      "IMPOSSIBLE_TRAVEL",
+      "RAPID_SUCCESSION",
+      "GEO_ORIGIN_MISMATCH"
+    ],
+    "rule_violations": [
+      "IMPOSSIBLE_TRAVEL",
+      "RAPID_SUCCESSION",
+      "GEO_ORIGIN_MISMATCH"
+    ],
+    "counterparty": "Uber Technologies",
+    "merchant_category": "Rideshare & Mobility",
+    "cell_tower": {
+      "tower_id": "440-51-9961-90300",
+      "carrier": "au by KDDI",
+      "mcc": 440,
+      "mnc": 51,
+      "lac": 9961,
+      "cid": 90300,
+      "lat": 35.671647,
+      "lon": 139.640778,
+      "distance_meters": 173.8,
+      "distance_km": 0.174,
+      "accuracy_meters": 27.7,
+      "timestamp_fix": "2026-10-25T00:11:27Z",
+      "badge": "LIVE"
+    },
+    "fix_source": "CELL_TOWER",
+    "accuracy_meters": 9.2,
+    "quarantine_id": "q_tx_map_04_3",
+    "quarantine_ts": "2026-10-25T00:11:33Z",
+    "sla_deadline": "2026-10-25T00:41:33Z",
+    "is_sla_breached": false,
+    "priority": "HIGH",
+    "ttl_epoch": 1793514771,
+    "ttl_expiry": 1795501971
+  },
+  {
+    "transaction_id": "tx_map_09_2",
+    "account_id": "acc_soc_09",
+    "source_account": "acc_soc_09",
+    "destination_account": "acc_merch_0465",
+    "amount": 693.43,
+    "currency": "EUR",
+    "txn_type": "CREDIT",
+    "channel": "POS",
+    "origin_ip": "185.220.103.111",
+    "transaction_city": "Frankfurt",
+    "transaction_country": "DE",
+    "lat": 50.105773,
+    "lon": 8.67408,
+    "timestamp": "2026-10-24T23:27:20Z",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 92.0,
+    "flags": [
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "LOCATION_MISMATCH"
+    ],
+    "rule_violations": [
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "LOCATION_MISMATCH"
+    ],
+    "counterparty": "Target Supercenter",
+    "merchant_category": "General Merchandise",
+    "cell_tower": {
+      "tower_id": "262-1-3658-69698",
+      "carrier": "Deutsche Telekom",
+      "mcc": 262,
+      "mnc": 1,
+      "lac": 3658,
+      "cid": 69698,
+      "lat": 50.102005,
+      "lon": 8.67776,
+      "distance_meters": 494.4,
+      "distance_km": 0.494,
+      "accuracy_meters": 22.9,
+      "timestamp_fix": "2026-10-24T23:27:10Z",
+      "badge": "LIVE"
+    },
+    "fix_source": "GPS",
+    "accuracy_meters": 43.0,
+    "quarantine_id": "q_tx_map_09_2",
+    "quarantine_ts": "2026-10-24T23:27:20Z",
+    "sla_deadline": "2026-10-24T23:57:20Z",
+    "is_sla_breached": false,
+    "priority": "HIGH",
+    "ttl_epoch": 1793514773,
+    "ttl_expiry": 1795501973
+  },
+  {
+    "transaction_id": "tx_map_09_3",
+    "account_id": "acc_soc_09",
+    "source_account": "acc_soc_09",
+    "destination_account": "acc_merch_0810",
+    "amount": 848.29,
+    "currency": "EUR",
+    "txn_type": "DEBIT",
+    "channel": "ONLINE_WEB",
+    "origin_ip": "185.220.103.111",
+    "transaction_city": "Frankfurt",
+    "transaction_country": "DE",
+    "lat": 50.118794,
+    "lon": 8.671538,
+    "timestamp": "2026-10-24T23:58:15Z",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 92.0,
+    "flags": [
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "LOCATION_MISMATCH"
+    ],
+    "rule_violations": [
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "LOCATION_MISMATCH"
+    ],
+    "counterparty": "Binance Crypto Clearing",
+    "merchant_category": "Virtual Currency Exchange",
+    "cell_tower": {
+      "tower_id": "262-1-7842-24215",
+      "carrier": "Deutsche Telekom",
+      "mcc": 262,
+      "mnc": 1,
+      "lac": 7842,
+      "cid": 24215,
+      "lat": 50.122578,
+      "lon": 8.671962,
+      "distance_meters": 421.8,
+      "distance_km": 0.422,
+      "accuracy_meters": 67.3,
+      "timestamp_fix": "2026-10-24T23:58:05Z",
+      "badge": "LIVE"
+    },
+    "fix_source": "CELL_TOWER",
+    "accuracy_meters": 24.4,
+    "quarantine_id": "q_tx_map_09_3",
+    "quarantine_ts": "2026-10-24T23:58:15Z",
+    "sla_deadline": "2026-10-25T00:28:15Z",
+    "is_sla_breached": false,
+    "priority": "HIGH",
+    "ttl_epoch": 1793514773,
+    "ttl_expiry": 1795501973
+  },
+  {
+    "transaction_id": "tx_map_09_4",
+    "account_id": "acc_soc_09",
+    "source_account": "acc_soc_09",
+    "destination_account": "acc_merch_3710",
+    "amount": 620.61,
+    "currency": "EUR",
+    "txn_type": "WIRE",
+    "channel": "MOBILE_APP",
+    "origin_ip": "185.220.103.111",
+    "transaction_city": "Frankfurt",
+    "transaction_country": "DE",
+    "lat": 50.121754,
+    "lon": 8.677836,
+    "timestamp": "2026-10-25T00:35:21Z",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 92.0,
+    "flags": [
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "LOCATION_MISMATCH"
+    ],
+    "rule_violations": [
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "LOCATION_MISMATCH"
+    ],
+    "counterparty": "Emirates Airlines",
+    "merchant_category": "Aviation & Travel",
+    "cell_tower": {
+      "tower_id": "262-1-9751-25056",
+      "carrier": "Deutsche Telekom",
+      "mcc": 262,
+      "mnc": 1,
+      "lac": 9751,
+      "cid": 25056,
+      "lat": 50.123402,
+      "lon": 8.679564,
+      "distance_meters": 220.8,
+      "distance_km": 0.221,
+      "accuracy_meters": 40.6,
+      "timestamp_fix": "2026-10-25T00:35:14Z",
+      "badge": "LIVE"
+    },
+    "fix_source": "GPS",
+    "accuracy_meters": 39.8,
+    "quarantine_id": "q_tx_map_09_4",
+    "quarantine_ts": "2026-10-25T00:35:21Z",
+    "sla_deadline": "2026-10-25T01:05:21Z",
+    "is_sla_breached": false,
+    "priority": "HIGH",
+    "ttl_epoch": 1793514773,
+    "ttl_expiry": 1795501973
+  },
+  {
+    "transaction_id": "tx_map_14_3",
+    "account_id": "acc_soc_14",
+    "source_account": "acc_soc_14",
+    "destination_account": "acc_merch_4866",
+    "amount": 222.07,
+    "currency": "USD",
+    "txn_type": "WIRE",
+    "channel": "POS",
+    "origin_ip": "192.0.2.14",
+    "transaction_city": "Toronto",
+    "transaction_country": "CA",
+    "lat": 43.639415,
+    "lon": -79.377757,
+    "timestamp": "2026-10-24T22:40:28Z",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 88.0,
+    "flags": [
+      "HIGH_VELOCITY",
+      "VELOCITY_SPIKE",
+      "RAPID_SUCCESSION"
+    ],
+    "rule_violations": [
+      "HIGH_VELOCITY",
+      "VELOCITY_SPIKE",
+      "RAPID_SUCCESSION"
+    ],
+    "counterparty": "Apple Retail Store",
+    "merchant_category": "Consumer Electronics",
+    "cell_tower": {
+      "tower_id": "302-610-5641-68737",
+      "carrier": "Bell Mobility",
+      "mcc": 302,
+      "mnc": 610,
+      "lac": 5641,
+      "cid": 68737,
+      "lat": 43.641135,
+      "lon": -79.377589,
+      "distance_meters": 191.7,
+      "distance_km": 0.192,
+      "accuracy_meters": 41.5,
+      "timestamp_fix": "2026-10-24T22:40:24Z",
+      "badge": "LIVE"
+    },
+    "fix_source": "CELL_TOWER",
+    "accuracy_meters": 20.2,
+    "quarantine_id": "q_tx_map_14_3",
+    "quarantine_ts": "2026-10-24T22:40:28Z",
+    "sla_deadline": "2026-10-24T23:10:28Z",
+    "is_sla_breached": false,
+    "priority": "MEDIUM",
+    "ttl_epoch": 1793514774,
+    "ttl_expiry": 1795501974
+  },
+  {
+    "transaction_id": "tx_map_14_4",
+    "account_id": "acc_soc_14",
+    "source_account": "acc_soc_14",
+    "destination_account": "acc_merch_4987",
+    "amount": 137.73,
+    "currency": "USD",
+    "txn_type": "CREDIT",
+    "channel": "POS",
+    "origin_ip": "192.0.2.14",
+    "transaction_city": "Toronto",
+    "transaction_country": "CA",
+    "lat": 43.669119,
+    "lon": -79.395764,
+    "timestamp": "2026-10-24T22:40:47Z",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 88.0,
+    "flags": [
+      "HIGH_VELOCITY",
+      "VELOCITY_SPIKE",
+      "RAPID_SUCCESSION"
+    ],
+    "rule_violations": [
+      "HIGH_VELOCITY",
+      "VELOCITY_SPIKE",
+      "RAPID_SUCCESSION"
+    ],
+    "counterparty": "British Airways Direct",
+    "merchant_category": "Aviation & Travel",
+    "cell_tower": {
+      "tower_id": "302-720-3859-45269",
+      "carrier": "Rogers Wireless",
+      "mcc": 302,
+      "mnc": 720,
+      "lac": 3859,
+      "cid": 45269,
+      "lat": 43.670719,
+      "lon": -79.397988,
+      "distance_meters": 252.3,
+      "distance_km": 0.252,
+      "accuracy_meters": 40.0,
+      "timestamp_fix": "2026-10-24T22:40:38Z",
+      "badge": "LIVE"
+    },
+    "fix_source": "GPS",
+    "accuracy_meters": 31.5,
+    "quarantine_id": "q_tx_map_14_4",
+    "quarantine_ts": "2026-10-24T22:40:47Z",
+    "sla_deadline": "2026-10-24T23:10:47Z",
+    "is_sla_breached": false,
+    "priority": "MEDIUM",
+    "ttl_epoch": 1793514775,
+    "ttl_expiry": 1795501975
+  },
+  {
+    "transaction_id": "tx_map_18_3",
+    "account_id": "acc_soc_18",
+    "source_account": "acc_soc_18",
+    "destination_account": "acc_merch_1374",
+    "amount": 169.65,
+    "currency": "GBP",
+    "txn_type": "WIRE",
+    "channel": "MOBILE_APP",
+    "origin_ip": "185.220.101.42",
+    "transaction_city": "London",
+    "transaction_country": "GB",
+    "lat": 51.511368,
+    "lon": -0.124833,
+    "timestamp": "2026-10-25T02:56:15Z",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 98.0,
+    "flags": [
+      "IMPOSSIBLE_TRAVEL",
+      "RAPID_SUCCESSION",
+      "GEO_ORIGIN_MISMATCH"
+    ],
+    "rule_violations": [
+      "IMPOSSIBLE_TRAVEL",
+      "RAPID_SUCCESSION",
+      "GEO_ORIGIN_MISMATCH"
+    ],
+    "counterparty": "Uber Technologies",
+    "merchant_category": "Rideshare & Mobility",
+    "cell_tower": {
+      "tower_id": "234-10-6965-86134",
+      "carrier": "O2 UK",
+      "mcc": 234,
+      "mnc": 10,
+      "lac": 6965,
+      "cid": 86134,
+      "lat": 51.514208,
+      "lon": -0.124441,
+      "distance_meters": 317.0,
+      "distance_km": 0.317,
+      "accuracy_meters": 55.5,
+      "timestamp_fix": "2026-10-25T02:56:03Z",
+      "badge": "LIVE"
+    },
+    "fix_source": "CELL_TOWER",
+    "accuracy_meters": 28.2,
+    "quarantine_id": "q_tx_map_18_3",
+    "quarantine_ts": "2026-10-25T02:56:15Z",
+    "sla_deadline": "2026-10-25T03:26:15Z",
+    "is_sla_breached": false,
+    "priority": "HIGH",
+    "ttl_epoch": 1793514776,
+    "ttl_expiry": 1795501976
+  },
+  {
+    "transaction_id": "tx_map_27_2",
+    "account_id": "acc_soc_27",
+    "source_account": "acc_soc_27",
+    "destination_account": "acc_merch_0546",
+    "amount": 636.1,
+    "currency": "EUR",
+    "txn_type": "DEBIT",
+    "channel": "MOBILE_APP",
+    "origin_ip": "185.220.103.111",
+    "transaction_city": "Frankfurt",
+    "transaction_country": "DE",
+    "lat": 50.102078,
+    "lon": 8.689602,
+    "timestamp": "2026-10-25T03:46:36Z",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 92.0,
+    "flags": [
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "LOCATION_MISMATCH"
+    ],
+    "rule_violations": [
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "LOCATION_MISMATCH"
+    ],
+    "counterparty": "Amazon Web Services",
+    "merchant_category": "Cloud Infrastructure",
+    "cell_tower": {
+      "tower_id": "262-3-1033-30658",
+      "carrier": "Telef\u00f3nica O2",
+      "mcc": 262,
+      "mnc": 3,
+      "lac": 1033,
+      "cid": 30658,
+      "lat": 50.100174,
+      "lon": 8.691066,
+      "distance_meters": 236.1,
+      "distance_km": 0.236,
+      "accuracy_meters": 46.2,
+      "timestamp_fix": "2026-10-25T03:46:33Z",
+      "badge": "LIVE"
+    },
+    "fix_source": "GPS",
+    "accuracy_meters": 30.7,
+    "quarantine_id": "q_tx_map_27_2",
+    "quarantine_ts": "2026-10-25T03:46:36Z",
+    "sla_deadline": "2026-10-25T04:16:36Z",
+    "is_sla_breached": false,
+    "priority": "HIGH",
+    "ttl_epoch": 1793514778,
+    "ttl_expiry": 1795501978
+  },
+  {
+    "transaction_id": "tx_map_27_3",
+    "account_id": "acc_soc_27",
+    "source_account": "acc_soc_27",
+    "destination_account": "acc_merch_0157",
+    "amount": 468.27,
+    "currency": "EUR",
+    "txn_type": "CREDIT",
+    "channel": "POS",
+    "origin_ip": "185.220.103.111",
+    "transaction_city": "Frankfurt",
+    "transaction_country": "DE",
+    "lat": 50.125118,
+    "lon": 8.680455,
+    "timestamp": "2026-10-25T04:09:54Z",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 92.0,
+    "flags": [
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "LOCATION_MISMATCH"
+    ],
+    "rule_violations": [
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "LOCATION_MISMATCH"
+    ],
+    "counterparty": "Stripe Payments US",
+    "merchant_category": "Payment Gateway",
+    "cell_tower": {
+      "tower_id": "262-2-5463-40441",
+      "carrier": "Vodafone Germany",
+      "mcc": 262,
+      "mnc": 2,
+      "lac": 5463,
+      "cid": 40441,
+      "lat": 50.126726,
+      "lon": 8.682287,
+      "distance_meters": 221.4,
+      "distance_km": 0.221,
+      "accuracy_meters": 40.1,
+      "timestamp_fix": "2026-10-25T04:09:52Z",
+      "badge": "LIVE"
+    },
+    "fix_source": "CELL_TOWER",
+    "accuracy_meters": 41.3,
+    "quarantine_id": "q_tx_map_27_3",
+    "quarantine_ts": "2026-10-25T04:09:54Z",
+    "sla_deadline": "2026-10-25T04:39:54Z",
+    "is_sla_breached": false,
+    "priority": "HIGH",
+    "ttl_epoch": 1793514778,
+    "ttl_expiry": 1795501978
+  },
+  {
+    "transaction_id": "tx_map_27_4",
+    "account_id": "acc_soc_27",
+    "source_account": "acc_soc_27",
+    "destination_account": "acc_merch_4866",
+    "amount": 272.73,
+    "currency": "EUR",
+    "txn_type": "CREDIT",
+    "channel": "MOBILE_APP",
+    "origin_ip": "185.220.103.111",
+    "transaction_city": "Frankfurt",
+    "transaction_country": "DE",
+    "lat": 50.10218,
+    "lon": 8.679758,
+    "timestamp": "2026-10-25T04:38:59Z",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 92.0,
+    "flags": [
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "LOCATION_MISMATCH"
+    ],
+    "rule_violations": [
+      "ORIGIN_TOR",
+      "TOR_EXIT_NODE",
+      "LOCATION_MISMATCH"
+    ],
+    "counterparty": "Apple Retail Store",
+    "merchant_category": "Consumer Electronics",
+    "cell_tower": {
+      "tower_id": "262-3-8268-84420",
+      "carrier": "Telef\u00f3nica O2",
+      "mcc": 262,
+      "mnc": 3,
+      "lac": 8268,
+      "cid": 84420,
+      "lat": 50.10014,
+      "lon": 8.68247,
+      "distance_meters": 298.1,
+      "distance_km": 0.298,
+      "accuracy_meters": 44.5,
+      "timestamp_fix": "2026-10-25T04:38:53Z",
+      "badge": "LIVE"
+    },
+    "fix_source": "GPS",
+    "accuracy_meters": 19.0,
+    "quarantine_id": "q_tx_map_27_4",
+    "quarantine_ts": "2026-10-25T04:38:59Z",
+    "sla_deadline": "2026-10-25T05:08:59Z",
+    "is_sla_breached": false,
+    "priority": "HIGH",
+    "ttl_epoch": 1793514779,
+    "ttl_expiry": 1795501979
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "account_id": "acc_test_bulk",
+    "amount": 500.0,
+    "risk_score": 95.0,
+    "decision": "BLOCK",
+    "status": "RELEASED",
+    "timestamp": "2026-10-25T07:24:35.182166+00:00",
+    "ttl_epoch": 1793517875,
+    "ttl_expiry": 1795505075,
+    "analyst_notes": "Bulk review",
+    "updated_ts": "2026-10-25T08:39:06Z"
+  },
+  {
+    "transaction_id": "tx_case_br_01",
+    "quarantine_id": "q_tx_case_br_01",
+    "account_id": "acc_case_br_01",
+    "amount": 637.2,
+    "currency": "GBP",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 96.0,
+    "flags": [
+      "IMPOSSIBLE_TRAVEL",
+      "RAPID_SUCCESSION"
+    ],
+    "rule_violations": [
+      "IMPOSSIBLE_TRAVEL",
+      "RAPID_SUCCESSION"
+    ],
+    "transaction_city": "London",
+    "transaction_country": "GB",
+    "lat": 51.5074,
+    "lon": -0.1278,
+    "timestamp": "2026-10-25T05:26:11Z",
+    "quarantine_ts": "2026-10-25T05:26:11Z",
+    "sla_deadline": "2026-10-25T06:26:11Z",
+    "assignee": "Unassigned",
+    "cell_tower": {
+      "tower_id": "234-15-2758-48723",
+      "carrier": "Vodafone UK",
+      "mcc": 234,
+      "mnc": 15,
+      "lac": 2758,
+      "cid": 48723,
+      "lat": 51.504933,
+      "lon": -0.125867,
+      "distance_meters": 305.2,
+      "distance_km": 0.305,
+      "accuracy_meters": 43.4,
+      "timestamp_fix": "2026-10-25T05:26:00Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: IMPOSSIBLE_TRAVEL, RAPID_SUCCESSION",
+        "timestamp": "2026-10-25T05:26:11Z"
+      }
+    ],
+    "ttl_epoch": 1793517971,
+    "ttl_expiry": 1795505171
+  },
+  {
+    "transaction_id": "tx_case_br_02",
+    "quarantine_id": "q_tx_case_br_02",
+    "account_id": "acc_case_br_02",
+    "amount": 738.39,
+    "currency": "EUR",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 88.0,
+    "flags": [
+      "TOR_EXIT_NODE",
+      "ORIGIN_TOR"
+    ],
+    "rule_violations": [
+      "TOR_EXIT_NODE",
+      "ORIGIN_TOR"
+    ],
+    "transaction_city": "Frankfurt",
+    "transaction_country": "DE",
+    "lat": 50.1109,
+    "lon": 8.6821,
+    "timestamp": "2026-10-25T05:51:11Z",
+    "quarantine_ts": "2026-10-25T05:51:11Z",
+    "sla_deadline": "2026-10-25T06:51:11Z",
+    "assignee": "Unassigned",
+    "cell_tower": {
+      "tower_id": "262-3-8006-21049",
+      "carrier": "Telef\u00f3nica O2",
+      "mcc": 262,
+      "mnc": 3,
+      "lac": 8006,
+      "cid": 21049,
+      "lat": 50.117408,
+      "lon": 8.678606,
+      "distance_meters": 765.3,
+      "distance_km": 0.765,
+      "accuracy_meters": 36.1,
+      "timestamp_fix": "2026-10-25T05:51:05Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: TOR_EXIT_NODE, ORIGIN_TOR",
+        "timestamp": "2026-10-25T05:51:11Z"
+      }
+    ],
+    "ttl_epoch": 1793517971,
+    "ttl_expiry": 1795505171
+  },
+  {
+    "transaction_id": "tx_case_br_03",
+    "quarantine_id": "q_tx_case_br_03",
+    "account_id": "acc_case_br_03",
+    "amount": 46.79,
+    "currency": "USD",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 92.0,
+    "flags": [
+      "HIGH_VELOCITY",
+      "VELOCITY_SPIKE"
+    ],
+    "rule_violations": [
+      "HIGH_VELOCITY",
+      "VELOCITY_SPIKE"
+    ],
+    "transaction_city": "Tokyo",
+    "transaction_country": "JP",
+    "lat": 35.6762,
+    "lon": 139.6503,
+    "timestamp": "2026-10-25T03:26:11Z",
+    "quarantine_ts": "2026-10-25T03:26:11Z",
+    "sla_deadline": "2026-10-25T04:26:11Z",
+    "assignee": "analyst_sarah",
+    "cell_tower": {
+      "tower_id": "440-51-5987-32930",
+      "carrier": "au by KDDI",
+      "mcc": 440,
+      "mnc": 51,
+      "lac": 5987,
+      "cid": 32930,
+      "lat": 35.680439,
+      "lon": 139.641949,
+      "distance_meters": 889.5,
+      "distance_km": 0.889,
+      "accuracy_meters": 30.2,
+      "timestamp_fix": "2026-10-25T03:26:08Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: HIGH_VELOCITY, VELOCITY_SPIKE",
+        "timestamp": "2026-10-25T03:26:11Z"
+      }
+    ],
+    "ttl_epoch": 1793517971,
+    "ttl_expiry": 1795505171
+  },
+  {
+    "transaction_id": "tx_case_br_04",
+    "quarantine_id": "q_tx_case_br_04",
+    "account_id": "acc_case_br_04",
+    "amount": 1033.87,
+    "currency": "USD",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 99.0,
+    "flags": [
+      "IMPOSSIBLE_TRAVEL",
+      "AMOUNT_ANOMALY"
+    ],
+    "rule_violations": [
+      "IMPOSSIBLE_TRAVEL",
+      "AMOUNT_ANOMALY"
+    ],
+    "transaction_city": "Sydney",
+    "transaction_country": "AU",
+    "lat": -33.8688,
+    "lon": 151.2093,
+    "timestamp": "2026-10-24T19:26:11Z",
+    "quarantine_ts": "2026-10-24T19:26:11Z",
+    "sla_deadline": "2026-10-24T20:26:11Z",
+    "assignee": "Unassigned",
+    "cell_tower": {
+      "tower_id": "505-3-4353-62668",
+      "carrier": "TPG Telecom",
+      "mcc": 505,
+      "mnc": 3,
+      "lac": 4353,
+      "cid": 62668,
+      "lat": -33.865855,
+      "lon": 151.212725,
+      "distance_meters": 455.2,
+      "distance_km": 0.455,
+      "accuracy_meters": 66.4,
+      "timestamp_fix": "2026-10-24T19:26:02Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: IMPOSSIBLE_TRAVEL, AMOUNT_ANOMALY",
+        "timestamp": "2026-10-24T19:26:11Z"
+      }
+    ],
+    "ttl_epoch": 1793517971,
+    "ttl_expiry": 1795505171
+  },
+  {
+    "transaction_id": "tx_case_risk_01",
+    "quarantine_id": "q_tx_case_risk_01",
+    "account_id": "acc_case_risk_01",
+    "amount": 86.9,
+    "currency": "USD",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 85.0,
+    "flags": [
+      "AMOUNT_SPIKE",
+      "UNUSUAL_HOUR"
+    ],
+    "rule_violations": [
+      "AMOUNT_SPIKE",
+      "UNUSUAL_HOUR"
+    ],
+    "transaction_city": "New York",
+    "transaction_country": "US",
+    "lat": 40.7128,
+    "lon": -74.006,
+    "timestamp": "2026-10-25T06:34:11Z",
+    "quarantine_ts": "2026-10-25T06:34:11Z",
+    "sla_deadline": "2026-10-25T07:34:11Z",
+    "assignee": "analyst_david",
+    "cell_tower": {
+      "tower_id": "310-260-4900-18457",
+      "carrier": "T-Mobile USA",
+      "mcc": 310,
+      "mnc": 260,
+      "lac": 4900,
+      "cid": 18457,
+      "lat": 40.710605,
+      "lon": -74.016098,
+      "distance_meters": 885.4,
+      "distance_km": 0.885,
+      "accuracy_meters": 63.4,
+      "timestamp_fix": "2026-10-25T06:34:08Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: AMOUNT_SPIKE, UNUSUAL_HOUR",
+        "timestamp": "2026-10-25T06:34:11Z"
+      }
+    ],
+    "ttl_epoch": 1793517971,
+    "ttl_expiry": 1795505171
+  },
+  {
+    "transaction_id": "tx_case_risk_02",
+    "quarantine_id": "q_tx_case_risk_02",
+    "account_id": "acc_case_risk_02",
+    "amount": 629.67,
+    "currency": "EUR",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 82.0,
+    "flags": [
+      "CHANNEL_RISK",
+      "LOCATION_MISMATCH"
+    ],
+    "rule_violations": [
+      "CHANNEL_RISK",
+      "LOCATION_MISMATCH"
+    ],
+    "transaction_city": "Paris",
+    "transaction_country": "FR",
+    "lat": 48.8566,
+    "lon": 2.3522,
+    "timestamp": "2026-10-25T06:31:11Z",
+    "quarantine_ts": "2026-10-25T06:31:11Z",
+    "sla_deadline": "2026-10-25T07:31:11Z",
+    "assignee": "Unassigned",
+    "cell_tower": {
+      "tower_id": "208-10-8604-60797",
+      "carrier": "SFR",
+      "mcc": 208,
+      "mnc": 10,
+      "lac": 8604,
+      "cid": 60797,
+      "lat": 48.854694,
+      "lon": 2.348493,
+      "distance_meters": 344.2,
+      "distance_km": 0.344,
+      "accuracy_meters": 43.2,
+      "timestamp_fix": "2026-10-25T06:31:06Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: CHANNEL_RISK, LOCATION_MISMATCH",
+        "timestamp": "2026-10-25T06:31:11Z"
+      }
+    ],
+    "ttl_epoch": 1793517972,
+    "ttl_expiry": 1795505172
+  },
+  {
+    "transaction_id": "tx_case_risk_03",
+    "quarantine_id": "q_tx_case_risk_03",
+    "account_id": "acc_case_risk_03",
+    "amount": 1004.88,
+    "currency": "USD",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 79.0,
+    "flags": [
+      "GEO_ORIGIN_MISMATCH"
+    ],
+    "rule_violations": [
+      "GEO_ORIGIN_MISMATCH"
+    ],
+    "transaction_city": "Singapore",
+    "transaction_country": "SG",
+    "lat": 1.3521,
+    "lon": 103.8198,
+    "timestamp": "2026-10-25T06:38:11Z",
+    "quarantine_ts": "2026-10-25T06:38:11Z",
+    "sla_deadline": "2026-10-25T07:38:11Z",
+    "assignee": "analyst_sarah",
+    "cell_tower": {
+      "tower_id": "525-1-3474-44731",
+      "carrier": "Singtel Mobile",
+      "mcc": 525,
+      "mnc": 1,
+      "lac": 3474,
+      "cid": 44731,
+      "lat": 1.356695,
+      "lon": 103.821564,
+      "distance_meters": 547.3,
+      "distance_km": 0.547,
+      "accuracy_meters": 38.1,
+      "timestamp_fix": "2026-10-25T06:38:01Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: GEO_ORIGIN_MISMATCH",
+        "timestamp": "2026-10-25T06:38:11Z"
+      }
+    ],
+    "ttl_epoch": 1793517972,
+    "ttl_expiry": 1795505172
+  },
+  {
+    "transaction_id": "tx_case_track_01",
+    "quarantine_id": "q_tx_case_track_01",
+    "account_id": "acc_case_track_01",
+    "amount": 361.25,
+    "currency": "EUR",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 90.0,
+    "flags": [
+      "ORIGIN_TOR",
+      "BURST_ACTIVITY"
+    ],
+    "rule_violations": [
+      "ORIGIN_TOR",
+      "BURST_ACTIVITY"
+    ],
+    "transaction_city": "Amsterdam",
+    "transaction_country": "NL",
+    "lat": 52.3676,
+    "lon": 4.9041,
+    "timestamp": "2026-10-25T07:14:11Z",
+    "quarantine_ts": "2026-10-25T07:14:11Z",
+    "sla_deadline": "2026-10-25T08:14:11Z",
+    "assignee": "Unassigned",
+    "cell_tower": {
+      "tower_id": "204-4-3762-65348",
+      "carrier": "Vodafone Netherlands",
+      "mcc": 204,
+      "mnc": 4,
+      "lac": 3762,
+      "cid": 65348,
+      "lat": 52.364111,
+      "lon": 4.89594,
+      "distance_meters": 676.4,
+      "distance_km": 0.676,
+      "accuracy_meters": 37.5,
+      "timestamp_fix": "2026-10-25T07:14:03Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: ORIGIN_TOR, BURST_ACTIVITY",
+        "timestamp": "2026-10-25T07:14:11Z"
+      }
+    ],
+    "ttl_epoch": 1793517972,
+    "ttl_expiry": 1795505172
+  },
+  {
+    "transaction_id": "tx_case_track_02",
+    "quarantine_id": "q_tx_case_track_02",
+    "account_id": "acc_case_track_02",
+    "amount": 1043.65,
+    "currency": "USD",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 76.0,
+    "flags": [
+      "UNUSUAL_HOUR",
+      "AMOUNT_ANOMALY"
+    ],
+    "rule_violations": [
+      "UNUSUAL_HOUR",
+      "AMOUNT_ANOMALY"
+    ],
+    "transaction_city": "Chicago",
+    "transaction_country": "US",
+    "lat": 41.8781,
+    "lon": -87.6298,
+    "timestamp": "2026-10-25T07:06:11Z",
+    "quarantine_ts": "2026-10-25T07:06:11Z",
+    "sla_deadline": "2026-10-25T08:06:11Z",
+    "assignee": "analyst_marcus",
+    "cell_tower": {
+      "tower_id": "310-260-8840-30523",
+      "carrier": "T-Mobile USA",
+      "mcc": 310,
+      "mnc": 260,
+      "lac": 8840,
+      "cid": 30523,
+      "lat": 41.871629,
+      "lon": -87.632457,
+      "distance_meters": 752.4,
+      "distance_km": 0.752,
+      "accuracy_meters": 69.7,
+      "timestamp_fix": "2026-10-25T07:06:05Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: UNUSUAL_HOUR, AMOUNT_ANOMALY",
+        "timestamp": "2026-10-25T07:06:11Z"
+      }
+    ],
+    "ttl_epoch": 1793517972,
+    "ttl_expiry": 1795505172
+  },
+  {
+    "transaction_id": "tx_case_track_03",
+    "quarantine_id": "q_tx_case_track_03",
+    "account_id": "acc_case_track_03",
+    "amount": 552.85,
+    "currency": "USD",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 84.0,
+    "flags": [
+      "IMPOSSIBLE_TRAVEL"
+    ],
+    "rule_violations": [
+      "IMPOSSIBLE_TRAVEL"
+    ],
+    "transaction_city": "Toronto",
+    "transaction_country": "CA",
+    "lat": 43.6532,
+    "lon": -79.3832,
+    "timestamp": "2026-10-25T07:21:11Z",
+    "quarantine_ts": "2026-10-25T07:21:11Z",
+    "sla_deadline": "2026-10-25T08:21:11Z",
+    "assignee": "Unassigned",
+    "cell_tower": {
+      "tower_id": "302-720-6131-37960",
+      "carrier": "Rogers Wireless",
+      "mcc": 302,
+      "mnc": 720,
+      "lac": 6131,
+      "cid": 37960,
+      "lat": 43.65623,
+      "lon": -79.383346,
+      "distance_meters": 337.1,
+      "distance_km": 0.337,
+      "accuracy_meters": 21.8,
+      "timestamp_fix": "2026-10-25T07:21:00Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: IMPOSSIBLE_TRAVEL",
+        "timestamp": "2026-10-25T07:21:11Z"
+      }
+    ],
+    "ttl_epoch": 1793517972,
+    "ttl_expiry": 1795505172
+  },
+  {
+    "transaction_id": "tx_case_track_04",
+    "quarantine_id": "q_tx_case_track_04",
+    "account_id": "acc_case_track_04",
+    "amount": 606.93,
+    "currency": "USD",
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "risk_score": 71.0,
+    "flags": [
+      "NEW_ACCOUNT",
+      "UNVERIFIED_CONTACT"
+    ],
+    "rule_violations": [
+      "NEW_ACCOUNT",
+      "UNVERIFIED_CONTACT"
+    ],
+    "transaction_city": "Mumbai",
+    "transaction_country": "IN",
+    "lat": 19.076,
+    "lon": 72.8777,
+    "timestamp": "2026-10-25T07:08:11Z",
+    "quarantine_ts": "2026-10-25T07:08:11Z",
+    "sla_deadline": "2026-10-25T08:08:11Z",
+    "assignee": "Unassigned",
+    "cell_tower": {
+      "tower_id": "404-45-2474-39752",
+      "carrier": "Bharti Airtel",
+      "mcc": 404,
+      "mnc": 45,
+      "lac": 2474,
+      "cid": 39752,
+      "lat": 19.075101,
+      "lon": 72.873885,
+      "distance_meters": 413.2,
+      "distance_km": 0.413,
+      "accuracy_meters": 47.6,
+      "timestamp_fix": "2026-10-25T07:08:06Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: NEW_ACCOUNT, UNVERIFIED_CONTACT",
+        "timestamp": "2026-10-25T07:08:11Z"
+      }
+    ],
+    "ttl_epoch": 1793517972,
+    "ttl_expiry": 1795505172
+  },
+  {
+    "transaction_id": "tx_case_esc_01",
+    "quarantine_id": "q_tx_case_esc_01",
+    "account_id": "acc_case_esc_01",
+    "amount": 975.73,
+    "currency": "USD",
+    "decision": "BLOCK",
+    "status": "ESCALATED",
+    "risk_score": 94.0,
+    "flags": [
+      "AMOUNT_ANOMALY",
+      "ORIGIN_TOR"
+    ],
+    "rule_violations": [
+      "AMOUNT_ANOMALY",
+      "ORIGIN_TOR"
+    ],
+    "transaction_city": "Zurich",
+    "transaction_country": "CH",
+    "lat": 47.3769,
+    "lon": 8.5417,
+    "timestamp": "2026-10-25T06:01:11Z",
+    "quarantine_ts": "2026-10-25T06:01:11Z",
+    "sla_deadline": "2026-10-25T07:01:11Z",
+    "assignee": "soc_tier2_lead",
+    "cell_tower": {
+      "tower_id": "228-2-2481-69998",
+      "carrier": "Sunrise Communications",
+      "mcc": 228,
+      "mnc": 2,
+      "lac": 2481,
+      "cid": 69998,
+      "lat": 47.383636,
+      "lon": 8.536186,
+      "distance_meters": 856.4,
+      "distance_km": 0.856,
+      "accuracy_meters": 69.1,
+      "timestamp_fix": "2026-10-25T06:01:03Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: AMOUNT_ANOMALY, ORIGIN_TOR",
+        "timestamp": "2026-10-25T06:01:11Z"
+      }
+    ],
+    "ttl_epoch": 1793517972,
+    "ttl_expiry": 1795505172
+  },
+  {
+    "transaction_id": "tx_case_esc_02",
+    "quarantine_id": "q_tx_case_esc_02",
+    "account_id": "acc_case_esc_02",
+    "amount": 393.49,
+    "currency": "USD",
+    "decision": "BLOCK",
+    "status": "ESCALATED",
+    "risk_score": 98.0,
+    "flags": [
+      "IMPOSSIBLE_TRAVEL",
+      "HIGH_VELOCITY"
+    ],
+    "rule_violations": [
+      "IMPOSSIBLE_TRAVEL",
+      "HIGH_VELOCITY"
+    ],
+    "transaction_city": "Dubai",
+    "transaction_country": "AE",
+    "lat": 25.2048,
+    "lon": 55.2708,
+    "timestamp": "2026-10-25T06:46:11Z",
+    "quarantine_ts": "2026-10-25T06:46:11Z",
+    "sla_deadline": "2026-10-25T07:46:11Z",
+    "assignee": "soc_tier2_lead",
+    "cell_tower": {
+      "tower_id": "424-2-3417-12150",
+      "carrier": "e& (Etisalat)",
+      "mcc": 424,
+      "mnc": 2,
+      "lac": 3417,
+      "cid": 12150,
+      "lat": 25.209995,
+      "lon": 55.272231,
+      "distance_meters": 595.3,
+      "distance_km": 0.595,
+      "accuracy_meters": 67.4,
+      "timestamp_fix": "2026-10-25T06:46:08Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: IMPOSSIBLE_TRAVEL, HIGH_VELOCITY",
+        "timestamp": "2026-10-25T06:46:11Z"
+      }
+    ],
+    "ttl_epoch": 1793517973,
+    "ttl_expiry": 1795505173
+  },
+  {
+    "transaction_id": "tx_case_rel_01",
+    "quarantine_id": "q_tx_case_rel_01",
+    "account_id": "acc_case_rel_01",
+    "amount": 491.97,
+    "currency": "USD",
+    "decision": "ALLOW",
+    "status": "RELEASED",
+    "risk_score": 55.0,
+    "flags": [
+      "UNUSUAL_HOUR"
+    ],
+    "rule_violations": [
+      "UNUSUAL_HOUR"
+    ],
+    "transaction_city": "New York",
+    "transaction_country": "US",
+    "lat": 40.7128,
+    "lon": -74.006,
+    "timestamp": "2026-10-25T04:26:11Z",
+    "quarantine_ts": "2026-10-25T04:26:11Z",
+    "sla_deadline": "2026-10-25T05:26:11Z",
+    "assignee": "analyst_sarah",
+    "cell_tower": {
+      "tower_id": "310-260-8993-22520",
+      "carrier": "T-Mobile USA",
+      "mcc": 310,
+      "mnc": 260,
+      "lac": 8993,
+      "cid": 22520,
+      "lat": 40.708067,
+      "lon": -74.006546,
+      "distance_meters": 528.3,
+      "distance_km": 0.528,
+      "accuracy_meters": 40.5,
+      "timestamp_fix": "2026-10-25T04:26:05Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: UNUSUAL_HOUR",
+        "timestamp": "2026-10-25T04:26:11Z"
+      }
+    ],
+    "updated_ts": "2026-10-25T04:42:15Z",
+    "ttl_epoch": 1793517973,
+    "ttl_expiry": 1795505173
+  },
+  {
+    "transaction_id": "tx_case_rel_02",
+    "quarantine_id": "q_tx_case_rel_02",
+    "account_id": "acc_case_rel_02",
+    "amount": 913.96,
+    "currency": "EUR",
+    "decision": "ALLOW",
+    "status": "RELEASED",
+    "risk_score": 62.0,
+    "flags": [
+      "LOCATION_MISMATCH"
+    ],
+    "rule_violations": [
+      "LOCATION_MISMATCH"
+    ],
+    "transaction_city": "Berlin",
+    "transaction_country": "DE",
+    "lat": 52.52,
+    "lon": 13.405,
+    "timestamp": "2026-10-25T03:56:11Z",
+    "quarantine_ts": "2026-10-25T03:56:11Z",
+    "sla_deadline": "2026-10-25T04:56:11Z",
+    "assignee": "analyst_david",
+    "cell_tower": {
+      "tower_id": "262-3-2698-36394",
+      "carrier": "Telef\u00f3nica O2",
+      "mcc": 262,
+      "mnc": 3,
+      "lac": 2698,
+      "cid": 36394,
+      "lat": 52.516554,
+      "lon": 13.405099,
+      "distance_meters": 383.2,
+      "distance_km": 0.383,
+      "accuracy_meters": 25.9,
+      "timestamp_fix": "2026-10-25T03:55:59Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: LOCATION_MISMATCH",
+        "timestamp": "2026-10-25T03:56:11Z"
+      }
+    ],
+    "updated_ts": "2026-10-25T04:40:18Z",
+    "ttl_epoch": 1793517973,
+    "ttl_expiry": 1795505173
+  },
+  {
+    "transaction_id": "tx_case_fraud_01",
+    "quarantine_id": "q_tx_case_fraud_01",
+    "account_id": "acc_case_fraud_01",
+    "amount": 1122.75,
+    "currency": "GBP",
+    "decision": "BLOCK",
+    "status": "CONFIRMED_FRAUD",
+    "risk_score": 100.0,
+    "flags": [
+      "IMPOSSIBLE_TRAVEL",
+      "TOR_EXIT_NODE"
+    ],
+    "rule_violations": [
+      "IMPOSSIBLE_TRAVEL",
+      "TOR_EXIT_NODE"
+    ],
+    "transaction_city": "London",
+    "transaction_country": "GB",
+    "lat": 51.5074,
+    "lon": -0.1278,
+    "timestamp": "2026-10-25T02:26:11Z",
+    "quarantine_ts": "2026-10-25T02:26:11Z",
+    "sla_deadline": "2026-10-25T03:26:11Z",
+    "assignee": "soc_tier2_lead",
+    "cell_tower": {
+      "tower_id": "234-10-5174-61653",
+      "carrier": "O2 UK",
+      "mcc": 234,
+      "mnc": 10,
+      "lac": 5174,
+      "cid": 61653,
+      "lat": 51.505302,
+      "lon": -0.120888,
+      "distance_meters": 532.2,
+      "distance_km": 0.532,
+      "accuracy_meters": 53.6,
+      "timestamp_fix": "2026-10-25T02:26:02Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: IMPOSSIBLE_TRAVEL, TOR_EXIT_NODE",
+        "timestamp": "2026-10-25T02:26:11Z"
+      }
+    ],
+    "updated_ts": "2026-10-25T02:46:02Z",
+    "ttl_epoch": 1793517973,
+    "ttl_expiry": 1795505173
+  },
+  {
+    "transaction_id": "tx_case_fraud_02",
+    "quarantine_id": "q_tx_case_fraud_02",
+    "account_id": "acc_case_fraud_02",
+    "amount": 79.56,
+    "currency": "USD",
+    "decision": "BLOCK",
+    "status": "CONFIRMED_FRAUD",
+    "risk_score": 98.0,
+    "flags": [
+      "HIGH_VELOCITY",
+      "VELOCITY_SPIKE"
+    ],
+    "rule_violations": [
+      "HIGH_VELOCITY",
+      "VELOCITY_SPIKE"
+    ],
+    "transaction_city": "Tokyo",
+    "transaction_country": "JP",
+    "lat": 35.6762,
+    "lon": 139.6503,
+    "timestamp": "2026-10-25T01:26:11Z",
+    "quarantine_ts": "2026-10-25T01:26:11Z",
+    "sla_deadline": "2026-10-25T02:26:11Z",
+    "assignee": "analyst_marcus",
+    "cell_tower": {
+      "tower_id": "440-10-1020-38457",
+      "carrier": "NTT Docomo",
+      "mcc": 440,
+      "mnc": 10,
+      "lac": 1020,
+      "cid": 38457,
+      "lat": 35.669682,
+      "lon": 139.65245,
+      "distance_meters": 750.3,
+      "distance_km": 0.75,
+      "accuracy_meters": 62.5,
+      "timestamp_fix": "2026-10-25T01:26:01Z",
+      "badge": "LIVE"
+    },
+    "notes_thread": [
+      {
+        "author": "System Detection",
+        "text": "Rule violations triggered quarantine: HIGH_VELOCITY, VELOCITY_SPIKE",
+        "timestamp": "2026-10-25T01:26:11Z"
+      }
+    ],
+    "updated_ts": "2026-10-25T01:41:29Z",
+    "ttl_epoch": 1793517973,
+    "ttl_expiry": 1795505173
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "account_id": "acc_test_bulk",
+    "amount": 500.0,
+    "risk_score": 95.0,
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "timestamp": "2026-10-25T08:37:04.756293+00:00",
+    "ttl_epoch": 1793522224,
+    "ttl_expiry": 1795509424
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "account_id": "acc_test_bulk",
+    "amount": 500.0,
+    "risk_score": 95.0,
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "timestamp": "2026-10-25T08:39:06.189067+00:00",
+    "ttl_epoch": 1793522346,
+    "ttl_expiry": 1795509546
   }
 ]
