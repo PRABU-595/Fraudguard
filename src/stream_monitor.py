@@ -16,6 +16,7 @@ import queue
 import socket
 import re
 import math
+import threading
 from typing import Any, Dict, List, Optional, Tuple
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -138,7 +139,26 @@ def calculate_live_tps(records: List[Dict[str, Any]], is_stream_active: bool = F
     return round(recent / 10.0, 1) if recent > 0 else float(configured_tps)
 
 
-def get_combined_records(db_client: Optional[DBClient] = None) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+_CACHE_LOCK = threading.Lock()
+_COMBINED_CACHE: Dict[str, Any] = {
+    "timestamp": 0.0,
+    "combined": None,
+    "main_records": None,
+    "quarantine_records": None,
+}
+
+
+def invalidate_records_cache() -> None:
+    with _CACHE_LOCK:
+        _COMBINED_CACHE["timestamp"] = 0.0
+
+
+def get_combined_records(db_client: Optional[DBClient] = None, force_refresh: bool = False) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+    now = time.time()
+    with _CACHE_LOCK:
+        if not force_refresh and (now - _COMBINED_CACHE["timestamp"]) < 2.5 and _COMBINED_CACHE["combined"] is not None:
+            return _COMBINED_CACHE["combined"], _COMBINED_CACHE["main_records"], _COMBINED_CACHE["quarantine_records"]
+
     db = db_client or DBClient(fallback_path=MAIN_LOG_FILE, quarantine_fallback_path=QUARANTINE_LOG_FILE)
     main_records = db.get_all_main_transactions()
     quarantine_records = db.get_all_quarantined_transactions()
@@ -158,6 +178,13 @@ def get_combined_records(db_client: Optional[DBClient] = None) -> Tuple[List[Dic
         key=lambda x: str(x.get("timestamp") or x.get("quarantine_ts") or ""),
         reverse=True
     )
+
+    with _CACHE_LOCK:
+        _COMBINED_CACHE["timestamp"] = now
+        _COMBINED_CACHE["combined"] = combined
+        _COMBINED_CACHE["main_records"] = main_records
+        _COMBINED_CACHE["quarantine_records"] = quarantine_records
+
     return combined, main_records, quarantine_records
 
 
@@ -814,8 +841,8 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
             cfg = load_rules_config()
             thresholds = cfg.get("thresholds", {"review_score": 40, "block_score": 80})
             self._send_json(200, {
-                "tile_url": os.environ.get("MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
-                "tile_attribution": os.environ.get("MAP_TILE_ATTRIBUTION", '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'),
+                "tile_url": os.environ.get("MAP_TILE_URL", "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"),
+                "tile_attribution": os.environ.get("MAP_TILE_ATTRIBUTION", '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'),
                 "api_key": os.environ.get("MAP_API_KEY", ""),
                 "environment": os.environ.get("ENVIRONMENT", "Demo"),
                 "thresholds": thresholds

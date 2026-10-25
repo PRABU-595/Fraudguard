@@ -128331,5 +128331,979 @@
     "_ts": "2026-10-25T11:36:17Z",
     "ttl_epoch": 1800704177,
     "ttl_expiry": 1795520177
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "account_id": "acc_test_bulk",
+    "amount": 500.0,
+    "risk_score": 95.0,
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "timestamp": "2026-10-25T11:56:32.542675+00:00",
+    "id": "tx_test_bulk_high_risk",
+    "_ts": "2026-10-25T11:56:32Z",
+    "ttl_epoch": 1800705392,
+    "ttl_expiry": 1795521392
+  },
+  {
+    "transaction_id": "tx_sim_1792929401287_2",
+    "account_id": "acc_norm_1792929401287_2",
+    "source_account": "acc_norm_1792929401287_2",
+    "destination_account": "acc_retail_343",
+    "timestamp": "2026-10-25T11:56:41Z",
+    "amount": 19.11,
+    "currency": "USD",
+    "txn_type": "DEBIT",
+    "merchant": "acc_retail_343",
+    "merchant_category": "DEBIT",
+    "transaction_city": "New York",
+    "transaction_country": "US",
+    "rule_score": 0.0,
+    "ml_score": 0.0023,
+    "total_risk": 0.0,
+    "risk_score": 0,
+    "decision": "ALLOW",
+    "action": "APPROVE",
+    "status": "APPROVED",
+    "http_status": 200,
+    "triggered_rules": [],
+    "flags": [],
+    "score_breakdown": [],
+    "attributes": {
+      "device_fingerprint": "fp_demo_default",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "browser": "Chrome 122",
+      "os": "Windows 11",
+      "screen_resolution": "1920x1080",
+      "session_id": "sess_tx_sim_1",
+      "payment_channel": "POS",
+      "merchant_category_code": "5411",
+      "currency": "USD",
+      "is_new_device": false,
+      "is_new_beneficiary": false,
+      "timezone_mismatch": false
+    },
+    "origin": {
+      "country": "US",
+      "city": "New York",
+      "region": "NY",
+      "isp": "Verizon Fios",
+      "asn": "AS701 MCI Communications",
+      "connection_type": "broadband",
+      "is_vpn": false,
+      "is_proxy": false,
+      "is_tor": false,
+      "is_datacenter": false,
+      "coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "timezone": "America/New_York",
+      "ip_address": "192.0.2.1",
+      "threat_level": "LOW"
+    },
+    "traceback": {
+      "account_transaction_count": 1,
+      "previous_transaction_id": null,
+      "previous_transaction_ts": null,
+      "previous_amount": 0.0,
+      "previous_merchant": "",
+      "previous_location": "",
+      "chain_risk_score": 0.0,
+      "velocity_1hr": 1,
+      "velocity_24hr": 1,
+      "velocity_7d": 1,
+      "amount_delta_pct": 0.0,
+      "amount_zscore": null,
+      "entity_graph": {
+        "nodes": [
+          {
+            "id": "acc:acc_norm_1792929401287_2",
+            "label": "acc_norm_1792929401287_2",
+            "type": "account",
+            "risk": "LOW"
+          },
+          {
+            "id": "dev:fp_default",
+            "label": "fp_default",
+            "type": "device",
+            "risk": "LOW"
+          },
+          {
+            "id": "ip:192.0.2.1",
+            "label": "192.0.2.1",
+            "type": "ip",
+            "risk": "LOW"
+          },
+          {
+            "id": "merch:acc_retail_343",
+            "label": "acc_retail_343",
+            "type": "merchant",
+            "risk": "LOW"
+          }
+        ],
+        "links": [
+          {
+            "source": "acc:acc_norm_1792929401287_2",
+            "target": "dev:fp_default",
+            "relation": "used_device"
+          },
+          {
+            "source": "acc:acc_norm_1792929401287_2",
+            "target": "ip:192.0.2.1",
+            "relation": "originated_from"
+          },
+          {
+            "source": "acc:acc_norm_1792929401287_2",
+            "target": "merch:acc_retail_343",
+            "relation": "transacted_with"
+          }
+        ]
+      }
+    },
+    "time_analysis": {
+      "transaction_hour": 7,
+      "transaction_day_of_week": 6,
+      "local_time_formatted": "2026-10-25 07:56:41",
+      "timezone": "America/New_York",
+      "is_night_transaction": false,
+      "is_weekend": true,
+      "account_typical_hours": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ],
+      "hour_anomaly": true,
+      "time_since_last_txn_mins": null,
+      "burst_count_5m": 1,
+      "hourly_distribution_24h": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      "velocity_sparkline": []
+    },
+    "location_check": {
+      "account_registered_city": "New York",
+      "account_registered_country": "US",
+      "account_registered_coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "transaction_city": "New York",
+      "transaction_country": "US",
+      "transaction_coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "previous_transaction_coordinates": null,
+      "distance_km": 0.0,
+      "is_international": false,
+      "is_impossible_travel": false,
+      "travel_distance_km": 0.0,
+      "travel_speed_kmh": 0.0,
+      "speed_threshold_kmh": 900.0,
+      "latest_location": {
+        "source": "carrier_cell_tower",
+        "source_label": "Telecom Carrier Cell Tower",
+        "is_simulated": true,
+        "city": "New York",
+        "country": "US",
+        "coordinates": {
+          "lat": 40.7128,
+          "lon": -74.006
+        },
+        "accuracy_meters": 50,
+        "freshness_seconds": 0.4,
+        "timestamp": "2026-10-25T11:56:41Z"
+      }
+    },
+    "pii_enrichment": {
+      "data_source": "MOCK_DEMO_DATA",
+      "enrichment_status": "FOUND",
+      "is_simulated": true,
+      "confidence": 0.84,
+      "source": "SIMULATED_CELL_TOWER+MOCK_IDENTITY_STORE",
+      "fetched_at": "2026-10-25T11:56:41Z",
+      "account_holder_name": "David Miller (1792929401287_2)",
+      "account_holder_masked": "D***d M****r (***************)",
+      "account_age_days": 320,
+      "linked_phone_verified": true,
+      "email_verified": true,
+      "sim_swap_last_7d": false,
+      "social_profile_risk_score": 0.05,
+      "social_reputation": "ESTABLISHED",
+      "device_fingerprint": "fp_demo_default",
+      "last_known_location": {
+        "source": "SIMULATED_CELL_TOWER",
+        "is_simulated": true,
+        "city": "New York",
+        "lat": 40.7128,
+        "lon": -74.006,
+        "accuracy_meters": 50,
+        "timestamp": "2026-10-25T11:56:41Z"
+      },
+      "location_matches_transaction": true
+    },
+    "execution_ms": 226.99,
+    "id": "tx_sim_1792929401287_2",
+    "_ts": "2026-10-25T11:56:41Z",
+    "ttl_epoch": 1800705401,
+    "ttl_expiry": 1795521401
+  },
+  {
+    "transaction_id": "tx_sim_1792929402979_4",
+    "account_id": "acc_norm_1792929402979_4",
+    "source_account": "acc_norm_1792929402979_4",
+    "destination_account": "acc_retail_303",
+    "timestamp": "2026-10-25T11:56:42Z",
+    "amount": 33.32,
+    "currency": "USD",
+    "txn_type": "CREDIT",
+    "merchant": "acc_retail_303",
+    "merchant_category": "CREDIT",
+    "transaction_city": "New York",
+    "transaction_country": "US",
+    "rule_score": 0.0,
+    "ml_score": 0.0023,
+    "total_risk": 0.0,
+    "risk_score": 0,
+    "decision": "ALLOW",
+    "action": "APPROVE",
+    "status": "APPROVED",
+    "http_status": 200,
+    "triggered_rules": [],
+    "flags": [],
+    "score_breakdown": [],
+    "attributes": {
+      "device_fingerprint": "fp_demo_default",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "browser": "Chrome 122",
+      "os": "Windows 11",
+      "screen_resolution": "1920x1080",
+      "session_id": "sess_tx_sim_1",
+      "payment_channel": "ONLINE_WEB",
+      "merchant_category_code": "5411",
+      "currency": "USD",
+      "is_new_device": false,
+      "is_new_beneficiary": false,
+      "timezone_mismatch": false
+    },
+    "origin": {
+      "country": "US",
+      "city": "New York",
+      "region": "NY",
+      "isp": "Verizon Fios",
+      "asn": "AS701 MCI Communications",
+      "connection_type": "broadband",
+      "is_vpn": false,
+      "is_proxy": false,
+      "is_tor": false,
+      "is_datacenter": false,
+      "coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "timezone": "America/New_York",
+      "ip_address": "192.0.2.1",
+      "threat_level": "LOW"
+    },
+    "traceback": {
+      "account_transaction_count": 1,
+      "previous_transaction_id": null,
+      "previous_transaction_ts": null,
+      "previous_amount": 0.0,
+      "previous_merchant": "",
+      "previous_location": "",
+      "chain_risk_score": 0.0,
+      "velocity_1hr": 1,
+      "velocity_24hr": 1,
+      "velocity_7d": 1,
+      "amount_delta_pct": 0.0,
+      "amount_zscore": null,
+      "entity_graph": {
+        "nodes": [
+          {
+            "id": "acc:acc_norm_1792929402979_4",
+            "label": "acc_norm_1792929402979_4",
+            "type": "account",
+            "risk": "LOW"
+          },
+          {
+            "id": "dev:fp_default",
+            "label": "fp_default",
+            "type": "device",
+            "risk": "LOW"
+          },
+          {
+            "id": "ip:192.0.2.1",
+            "label": "192.0.2.1",
+            "type": "ip",
+            "risk": "LOW"
+          },
+          {
+            "id": "merch:acc_retail_303",
+            "label": "acc_retail_303",
+            "type": "merchant",
+            "risk": "LOW"
+          }
+        ],
+        "links": [
+          {
+            "source": "acc:acc_norm_1792929402979_4",
+            "target": "dev:fp_default",
+            "relation": "used_device"
+          },
+          {
+            "source": "acc:acc_norm_1792929402979_4",
+            "target": "ip:192.0.2.1",
+            "relation": "originated_from"
+          },
+          {
+            "source": "acc:acc_norm_1792929402979_4",
+            "target": "merch:acc_retail_303",
+            "relation": "transacted_with"
+          }
+        ]
+      }
+    },
+    "time_analysis": {
+      "transaction_hour": 7,
+      "transaction_day_of_week": 6,
+      "local_time_formatted": "2026-10-25 07:56:42",
+      "timezone": "America/New_York",
+      "is_night_transaction": false,
+      "is_weekend": true,
+      "account_typical_hours": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ],
+      "hour_anomaly": true,
+      "time_since_last_txn_mins": null,
+      "burst_count_5m": 1,
+      "hourly_distribution_24h": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      "velocity_sparkline": []
+    },
+    "location_check": {
+      "account_registered_city": "New York",
+      "account_registered_country": "US",
+      "account_registered_coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "transaction_city": "New York",
+      "transaction_country": "US",
+      "transaction_coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "previous_transaction_coordinates": null,
+      "distance_km": 0.0,
+      "is_international": false,
+      "is_impossible_travel": false,
+      "travel_distance_km": 0.0,
+      "travel_speed_kmh": 0.0,
+      "speed_threshold_kmh": 900.0,
+      "latest_location": {
+        "source": "carrier_cell_tower",
+        "source_label": "Telecom Carrier Cell Tower",
+        "is_simulated": true,
+        "city": "New York",
+        "country": "US",
+        "coordinates": {
+          "lat": 40.7128,
+          "lon": -74.006
+        },
+        "accuracy_meters": 50,
+        "freshness_seconds": 1.1,
+        "timestamp": "2026-10-25T11:56:42Z"
+      }
+    },
+    "pii_enrichment": {
+      "data_source": "MOCK_DEMO_DATA",
+      "enrichment_status": "FOUND",
+      "is_simulated": true,
+      "confidence": 0.84,
+      "source": "SIMULATED_CELL_TOWER+MOCK_IDENTITY_STORE",
+      "fetched_at": "2026-10-25T11:56:42Z",
+      "account_holder_name": "David Miller (1792929402979_4)",
+      "account_holder_masked": "D***d M****r (***************)",
+      "account_age_days": 320,
+      "linked_phone_verified": true,
+      "email_verified": true,
+      "sim_swap_last_7d": false,
+      "social_profile_risk_score": 0.05,
+      "social_reputation": "ESTABLISHED",
+      "device_fingerprint": "fp_demo_default",
+      "last_known_location": {
+        "source": "SIMULATED_CELL_TOWER",
+        "is_simulated": true,
+        "city": "New York",
+        "lat": 40.7128,
+        "lon": -74.006,
+        "accuracy_meters": 50,
+        "timestamp": "2026-10-25T11:56:42Z"
+      },
+      "location_matches_transaction": true
+    },
+    "execution_ms": 234.98,
+    "id": "tx_sim_1792929402979_4",
+    "_ts": "2026-10-25T11:56:43Z",
+    "ttl_epoch": 1800705403,
+    "ttl_expiry": 1795521403
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "account_id": "acc_test_bulk",
+    "amount": 500.0,
+    "risk_score": 95.0,
+    "decision": "BLOCK",
+    "status": "QUARANTINED",
+    "timestamp": "2026-10-25T11:57:14.370430+00:00",
+    "id": "tx_test_bulk_high_risk",
+    "_ts": "2026-10-25T11:57:14Z",
+    "ttl_epoch": 1800705434,
+    "ttl_expiry": 1795521434
+  },
+  {
+    "transaction_id": "tx_sim_1792929437238_2",
+    "account_id": "acc_norm_1792929437238_2",
+    "source_account": "acc_norm_1792929437238_2",
+    "destination_account": "acc_retail_949",
+    "timestamp": "2026-10-25T11:57:17Z",
+    "amount": 36.55,
+    "currency": "USD",
+    "txn_type": "CREDIT",
+    "merchant": "acc_retail_949",
+    "merchant_category": "CREDIT",
+    "transaction_city": "New York",
+    "transaction_country": "US",
+    "rule_score": 0.0,
+    "ml_score": 0.0023,
+    "total_risk": 0.0,
+    "risk_score": 0,
+    "decision": "ALLOW",
+    "action": "APPROVE",
+    "status": "APPROVED",
+    "http_status": 200,
+    "triggered_rules": [],
+    "flags": [],
+    "score_breakdown": [],
+    "attributes": {
+      "device_fingerprint": "fp_demo_default",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "browser": "Chrome 122",
+      "os": "Windows 11",
+      "screen_resolution": "1920x1080",
+      "session_id": "sess_tx_sim_1",
+      "payment_channel": "MOBILE_APP",
+      "merchant_category_code": "5411",
+      "currency": "USD",
+      "is_new_device": false,
+      "is_new_beneficiary": false,
+      "timezone_mismatch": false
+    },
+    "origin": {
+      "country": "US",
+      "city": "New York",
+      "region": "NY",
+      "isp": "Verizon Fios",
+      "asn": "AS701 MCI Communications",
+      "connection_type": "broadband",
+      "is_vpn": false,
+      "is_proxy": false,
+      "is_tor": false,
+      "is_datacenter": false,
+      "coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "timezone": "America/New_York",
+      "ip_address": "192.0.2.1",
+      "threat_level": "LOW"
+    },
+    "traceback": {
+      "account_transaction_count": 1,
+      "previous_transaction_id": null,
+      "previous_transaction_ts": null,
+      "previous_amount": 0.0,
+      "previous_merchant": "",
+      "previous_location": "",
+      "chain_risk_score": 0.0,
+      "velocity_1hr": 1,
+      "velocity_24hr": 1,
+      "velocity_7d": 1,
+      "amount_delta_pct": 0.0,
+      "amount_zscore": null,
+      "entity_graph": {
+        "nodes": [
+          {
+            "id": "acc:acc_norm_1792929437238_2",
+            "label": "acc_norm_1792929437238_2",
+            "type": "account",
+            "risk": "LOW"
+          },
+          {
+            "id": "dev:fp_default",
+            "label": "fp_default",
+            "type": "device",
+            "risk": "LOW"
+          },
+          {
+            "id": "ip:192.0.2.1",
+            "label": "192.0.2.1",
+            "type": "ip",
+            "risk": "LOW"
+          },
+          {
+            "id": "merch:acc_retail_949",
+            "label": "acc_retail_949",
+            "type": "merchant",
+            "risk": "LOW"
+          }
+        ],
+        "links": [
+          {
+            "source": "acc:acc_norm_1792929437238_2",
+            "target": "dev:fp_default",
+            "relation": "used_device"
+          },
+          {
+            "source": "acc:acc_norm_1792929437238_2",
+            "target": "ip:192.0.2.1",
+            "relation": "originated_from"
+          },
+          {
+            "source": "acc:acc_norm_1792929437238_2",
+            "target": "merch:acc_retail_949",
+            "relation": "transacted_with"
+          }
+        ]
+      }
+    },
+    "time_analysis": {
+      "transaction_hour": 7,
+      "transaction_day_of_week": 6,
+      "local_time_formatted": "2026-10-25 07:57:17",
+      "timezone": "America/New_York",
+      "is_night_transaction": false,
+      "is_weekend": true,
+      "account_typical_hours": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ],
+      "hour_anomaly": true,
+      "time_since_last_txn_mins": null,
+      "burst_count_5m": 1,
+      "hourly_distribution_24h": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      "velocity_sparkline": []
+    },
+    "location_check": {
+      "account_registered_city": "New York",
+      "account_registered_country": "US",
+      "account_registered_coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "transaction_city": "New York",
+      "transaction_country": "US",
+      "transaction_coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "previous_transaction_coordinates": null,
+      "distance_km": 0.0,
+      "is_international": false,
+      "is_impossible_travel": false,
+      "travel_distance_km": 0.0,
+      "travel_speed_kmh": 0.0,
+      "speed_threshold_kmh": 900.0,
+      "latest_location": {
+        "source": "carrier_cell_tower",
+        "source_label": "Telecom Carrier Cell Tower",
+        "is_simulated": true,
+        "city": "New York",
+        "country": "US",
+        "coordinates": {
+          "lat": 40.7128,
+          "lon": -74.006
+        },
+        "accuracy_meters": 50,
+        "freshness_seconds": 0.4,
+        "timestamp": "2026-10-25T11:57:17Z"
+      }
+    },
+    "pii_enrichment": {
+      "data_source": "MOCK_DEMO_DATA",
+      "enrichment_status": "FOUND",
+      "is_simulated": true,
+      "confidence": 0.84,
+      "source": "SIMULATED_CELL_TOWER+MOCK_IDENTITY_STORE",
+      "fetched_at": "2026-10-25T11:57:17Z",
+      "account_holder_name": "David Miller (1792929437238_2)",
+      "account_holder_masked": "D***d M****r (***************)",
+      "account_age_days": 320,
+      "linked_phone_verified": true,
+      "email_verified": true,
+      "sim_swap_last_7d": false,
+      "social_profile_risk_score": 0.05,
+      "social_reputation": "ESTABLISHED",
+      "device_fingerprint": "fp_demo_default",
+      "last_known_location": {
+        "source": "SIMULATED_CELL_TOWER",
+        "is_simulated": true,
+        "city": "New York",
+        "lat": 40.7128,
+        "lon": -74.006,
+        "accuracy_meters": 50,
+        "timestamp": "2026-10-25T11:57:17Z"
+      },
+      "location_matches_transaction": true
+    },
+    "execution_ms": 257.04,
+    "id": "tx_sim_1792929437238_2",
+    "_ts": "2026-10-25T11:57:17Z",
+    "ttl_epoch": 1800705437,
+    "ttl_expiry": 1795521437
+  },
+  {
+    "transaction_id": "tx_sim_1792929438892_4",
+    "account_id": "acc_norm_1792929438892_4",
+    "source_account": "acc_norm_1792929438892_4",
+    "destination_account": "acc_retail_132",
+    "timestamp": "2026-10-25T11:57:18Z",
+    "amount": 75.92,
+    "currency": "USD",
+    "txn_type": "CREDIT",
+    "merchant": "acc_retail_132",
+    "merchant_category": "CREDIT",
+    "transaction_city": "New York",
+    "transaction_country": "US",
+    "rule_score": 0.0,
+    "ml_score": 0.0023,
+    "total_risk": 0.0,
+    "risk_score": 0,
+    "decision": "ALLOW",
+    "action": "APPROVE",
+    "status": "APPROVED",
+    "http_status": 200,
+    "triggered_rules": [],
+    "flags": [],
+    "score_breakdown": [],
+    "attributes": {
+      "device_fingerprint": "fp_demo_default",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "browser": "Chrome 122",
+      "os": "Windows 11",
+      "screen_resolution": "1920x1080",
+      "session_id": "sess_tx_sim_1",
+      "payment_channel": "POS",
+      "merchant_category_code": "5411",
+      "currency": "USD",
+      "is_new_device": false,
+      "is_new_beneficiary": false,
+      "timezone_mismatch": false
+    },
+    "origin": {
+      "country": "US",
+      "city": "New York",
+      "region": "NY",
+      "isp": "Verizon Fios",
+      "asn": "AS701 MCI Communications",
+      "connection_type": "broadband",
+      "is_vpn": false,
+      "is_proxy": false,
+      "is_tor": false,
+      "is_datacenter": false,
+      "coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "timezone": "America/New_York",
+      "ip_address": "192.0.2.1",
+      "threat_level": "LOW"
+    },
+    "traceback": {
+      "account_transaction_count": 1,
+      "previous_transaction_id": null,
+      "previous_transaction_ts": null,
+      "previous_amount": 0.0,
+      "previous_merchant": "",
+      "previous_location": "",
+      "chain_risk_score": 0.0,
+      "velocity_1hr": 1,
+      "velocity_24hr": 1,
+      "velocity_7d": 1,
+      "amount_delta_pct": 0.0,
+      "amount_zscore": null,
+      "entity_graph": {
+        "nodes": [
+          {
+            "id": "acc:acc_norm_1792929438892_4",
+            "label": "acc_norm_1792929438892_4",
+            "type": "account",
+            "risk": "LOW"
+          },
+          {
+            "id": "dev:fp_default",
+            "label": "fp_default",
+            "type": "device",
+            "risk": "LOW"
+          },
+          {
+            "id": "ip:192.0.2.1",
+            "label": "192.0.2.1",
+            "type": "ip",
+            "risk": "LOW"
+          },
+          {
+            "id": "merch:acc_retail_132",
+            "label": "acc_retail_132",
+            "type": "merchant",
+            "risk": "LOW"
+          }
+        ],
+        "links": [
+          {
+            "source": "acc:acc_norm_1792929438892_4",
+            "target": "dev:fp_default",
+            "relation": "used_device"
+          },
+          {
+            "source": "acc:acc_norm_1792929438892_4",
+            "target": "ip:192.0.2.1",
+            "relation": "originated_from"
+          },
+          {
+            "source": "acc:acc_norm_1792929438892_4",
+            "target": "merch:acc_retail_132",
+            "relation": "transacted_with"
+          }
+        ]
+      }
+    },
+    "time_analysis": {
+      "transaction_hour": 7,
+      "transaction_day_of_week": 6,
+      "local_time_formatted": "2026-10-25 07:57:18",
+      "timezone": "America/New_York",
+      "is_night_transaction": false,
+      "is_weekend": true,
+      "account_typical_hours": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ],
+      "hour_anomaly": true,
+      "time_since_last_txn_mins": null,
+      "burst_count_5m": 1,
+      "hourly_distribution_24h": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      "velocity_sparkline": []
+    },
+    "location_check": {
+      "account_registered_city": "New York",
+      "account_registered_country": "US",
+      "account_registered_coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "transaction_city": "New York",
+      "transaction_country": "US",
+      "transaction_coordinates": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "previous_transaction_coordinates": null,
+      "distance_km": 0.0,
+      "is_international": false,
+      "is_impossible_travel": false,
+      "travel_distance_km": 0.0,
+      "travel_speed_kmh": 0.0,
+      "speed_threshold_kmh": 900.0,
+      "latest_location": {
+        "source": "carrier_cell_tower",
+        "source_label": "Telecom Carrier Cell Tower",
+        "is_simulated": true,
+        "city": "New York",
+        "country": "US",
+        "coordinates": {
+          "lat": 40.7128,
+          "lon": -74.006
+        },
+        "accuracy_meters": 50,
+        "freshness_seconds": 1.0,
+        "timestamp": "2026-10-25T11:57:18Z"
+      }
+    },
+    "pii_enrichment": {
+      "data_source": "MOCK_DEMO_DATA",
+      "enrichment_status": "FOUND",
+      "is_simulated": true,
+      "confidence": 0.84,
+      "source": "SIMULATED_CELL_TOWER+MOCK_IDENTITY_STORE",
+      "fetched_at": "2026-10-25T11:57:18Z",
+      "account_holder_name": "David Miller (1792929438892_4)",
+      "account_holder_masked": "D***d M****r (***************)",
+      "account_age_days": 320,
+      "linked_phone_verified": true,
+      "email_verified": true,
+      "sim_swap_last_7d": false,
+      "social_profile_risk_score": 0.05,
+      "social_reputation": "ESTABLISHED",
+      "device_fingerprint": "fp_demo_default",
+      "last_known_location": {
+        "source": "SIMULATED_CELL_TOWER",
+        "is_simulated": true,
+        "city": "New York",
+        "lat": 40.7128,
+        "lon": -74.006,
+        "accuracy_meters": 50,
+        "timestamp": "2026-10-25T11:57:18Z"
+      },
+      "location_matches_transaction": true
+    },
+    "execution_ms": 177.13,
+    "id": "tx_sim_1792929438892_4",
+    "_ts": "2026-10-25T11:57:19Z",
+    "ttl_epoch": 1800705439,
+    "ttl_expiry": 1795521439
   }
 ]

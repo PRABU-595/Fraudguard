@@ -2297,5 +2297,63 @@
     "operator": "Sarah Chen",
     "role": "analyst",
     "timestamp": "2026-10-25T11:36:17Z"
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "action": "RELEASE",
+    "previous_status": "QUARANTINED",
+    "new_status": "RELEASED",
+    "operator": "admin_user",
+    "role": "admin",
+    "reason": "Bulk review",
+    "notes": "Bulk review",
+    "timestamp": "2026-10-25T11:56:33Z"
+  },
+  {
+    "transaction_id": "tx_sim_1792929401846_3",
+    "action": "CONFIRM_FRAUD",
+    "previous_status": "QUARANTINED",
+    "new_status": "CONFIRMED_FRAUD",
+    "operator": "QA_Lead",
+    "role": "analyst",
+    "reason": "Confirmed exit relay",
+    "notes": "Blocked in test",
+    "timestamp": "2026-10-25T11:56:42Z"
+  },
+  {
+    "transaction_id": "tx_sim_1792929402979_4",
+    "action": "PII_UNMASK_REVEAL",
+    "operator": "Sarah Chen",
+    "role": "analyst",
+    "timestamp": "2026-10-25T11:56:43Z"
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "action": "RELEASE",
+    "previous_status": "QUARANTINED",
+    "new_status": "RELEASED",
+    "operator": "admin_user",
+    "role": "admin",
+    "reason": "Bulk review",
+    "notes": "Bulk review",
+    "timestamp": "2026-10-25T11:57:14Z"
+  },
+  {
+    "transaction_id": "tx_sim_1792929437831_3",
+    "action": "CONFIRM_FRAUD",
+    "previous_status": "QUARANTINED",
+    "new_status": "CONFIRMED_FRAUD",
+    "operator": "QA_Lead",
+    "role": "analyst",
+    "reason": "Confirmed exit relay",
+    "notes": "Blocked in test",
+    "timestamp": "2026-10-25T11:57:18Z"
+  },
+  {
+    "transaction_id": "tx_sim_1792929438892_4",
+    "action": "PII_UNMASK_REVEAL",
+    "operator": "Sarah Chen",
+    "role": "analyst",
+    "timestamp": "2026-10-25T11:57:19Z"
   }
 ]

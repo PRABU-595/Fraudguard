@@ -56,8 +56,8 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
   const [currentZoom, setCurrentZoom] = useState<number>(3);
   const [tileError, setTileError] = useState<boolean>(false);
   const [tileConfig, setTileConfig] = useState<{ url: string; attribution: string }>({
-    url: (import.meta as any).env?.VITE_MAP_TILE_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: (import.meta as any).env?.VITE_MAP_TILE_ATTRIBUTION || '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+    url: (import.meta as any).env?.VITE_MAP_TILE_URL || "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    attribution: (import.meta as any).env?.VITE_MAP_TILE_ATTRIBUTION || '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
   });
 
   // Track initial auto-fit and filter change to prevent zoom-in rubberbanding
@@ -255,27 +255,17 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
       heatmapPane.style.zIndex = "450";
     }
 
-    // Inlined country outlines GeoJSON for zero-latency instant vector basemap
-    if (worldCountriesGeoJson && mapRef.current) {
-      geoJsonLayerRef.current = L.geoJSON(worldCountriesGeoJson as any, {
-        style: {
-          fillColor: "#0f172a",
-          weight: 1,
-          color: "#334155",
-          fillOpacity: 0.6,
-        }
-      }).addTo(mapRef.current);
-    }
+    // CartoDB Dark Matter tiles natively draw dark borders & continents; GeoJSON bypassed for instant 0ms mount
 
-    // Add Tile Layer with CSS dark filter & high-performance buffer caching
+    // Add Tile Layer with Edge CDN subdomains & high-performance buffer caching
     const tileLayer = L.tileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
+      subdomains: "abcd",
       minZoom: 2,
       maxZoom: 19,
       noWrap: false,
-      keepBuffer: 6,
+      keepBuffer: 8,
       updateWhenIdle: true,
-      className: "soc-dark-tile-filter",
     });
 
     tileLayer.on("tileerror", () => {
@@ -496,7 +486,7 @@ export const ThreatMap: React.FC<ThreatMapProps> = ({
         </div>
       `;
 
-      marker.bindPopup(popupContent, {
+      marker.bindPopup(() => popupContent, {
         className: "custom-soc-popup",
         maxWidth: 320,
         minWidth: 260,

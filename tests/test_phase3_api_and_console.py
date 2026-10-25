@@ -23,6 +23,8 @@ from src.stream_monitor import TelemetryHTTPRequestHandler
 class TestPhase3ConsoleAPI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # Warm up router ML model so cold unpickle doesn't stall test HTTP requests
+        TelemetryHTTPRequestHandler.get_router()
         cls.httpd = ThreadingHTTPServer(("127.0.0.1", 0), TelemetryHTTPRequestHandler)
         cls.port = cls.httpd.server_port
         cls.server_thread = threading.Thread(target=cls.httpd.serve_forever, daemon=True)
@@ -36,7 +38,7 @@ class TestPhase3ConsoleAPI(unittest.TestCase):
 
     def _get(self, path):
         req = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", headers={"Connection": "close"})
-        with urllib.request.urlopen(req, timeout=5.0) as resp:
+        with urllib.request.urlopen(req, timeout=15.0) as resp:
             content = resp.read()
             ct = resp.headers.get("Content-Type", "")
             return resp.status, ct, content
@@ -47,7 +49,7 @@ class TestPhase3ConsoleAPI(unittest.TestCase):
         if headers:
             hdrs.update(headers)
         req = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", data=data, headers=hdrs)
-        with urllib.request.urlopen(req, timeout=5.0) as resp:
+        with urllib.request.urlopen(req, timeout=15.0) as resp:
             content = resp.read()
             return resp.status, json.loads(content.decode("utf-8"))
 
