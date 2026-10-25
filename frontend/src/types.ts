@@ -7,8 +7,9 @@ export interface CellTower {
   mnc: number;
   lac: number;
   cid: number;
-  lat: number;
-  lon: number;
+  lat: number | null;
+  lon: number | null;
+  has_coordinates?: boolean;
   distance_meters: number;
   distance_km: number;
   accuracy_meters: number;
@@ -51,8 +52,9 @@ export interface Transaction {
   risk_score: number;
   risk_tier: RiskTier;
   risk_color: string;
-  lat: number;
-  lon: number;
+  lat: number | null;
+  lon: number | null;
+  has_coordinates?: boolean;
   city: string;
   country: string;
   source: "CELL_TOWER" | "GPS" | "IP" | string;

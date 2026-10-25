@@ -161,26 +161,30 @@ export const TransactionDetailDrawer: React.FC<TransactionDetailDrawerProps> = (
             <div>
               <span className="text-[10px] text-muted block">Latitude (6 Decimals)</span>
               <div className="font-mono text-xs flex items-center space-x-1 text-white">
-                <span>{transaction.lat.toFixed(6)}</span>
-                <button 
-                  onClick={() => handleCopy(transaction.lat.toFixed(6), "lat")}
-                  className="hover:text-cyan-400"
-                >
-                  {copiedKey === "lat" ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
-                </button>
+                <span>{transaction.lat != null ? transaction.lat.toFixed(6) : "N/A (No fix)"}</span>
+                {transaction.lat != null && (
+                  <button 
+                    onClick={() => handleCopy(transaction.lat!.toFixed(6), "lat")}
+                    className="hover:text-cyan-400"
+                  >
+                    {copiedKey === "lat" ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+                  </button>
+                )}
               </div>
             </div>
 
             <div>
               <span className="text-[10px] text-muted block">Longitude (6 Decimals)</span>
               <div className="font-mono text-xs flex items-center space-x-1 text-white">
-                <span>{transaction.lon.toFixed(6)}</span>
-                <button 
-                  onClick={() => handleCopy(transaction.lon.toFixed(6), "lon")}
-                  className="hover:text-cyan-400"
-                >
-                  {copiedKey === "lon" ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
-                </button>
+                <span>{transaction.lon != null ? transaction.lon.toFixed(6) : "N/A (No fix)"}</span>
+                {transaction.lon != null && (
+                  <button 
+                    onClick={() => handleCopy(transaction.lon!.toFixed(6), "lon")}
+                    className="hover:text-cyan-400"
+                  >
+                    {copiedKey === "lon" ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -252,7 +256,11 @@ export const TransactionDetailDrawer: React.FC<TransactionDetailDrawerProps> = (
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted">Tower Coordinates:</span>
-                <span className="font-mono text-slate-200">{transaction.tower.lat.toFixed(6)}, {transaction.tower.lon.toFixed(6)}</span>
+                <span className="font-mono text-slate-200">
+                  {transaction.tower.lat != null && transaction.tower.lon != null
+                    ? `${transaction.tower.lat.toFixed(6)}, ${transaction.tower.lon.toFixed(6)}`
+                    : "N/A"}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted">Distance to Transaction:</span>

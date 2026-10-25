@@ -679,11 +679,21 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
             account_filter = query.get("account", [None])[0]
             channel_filter = query.get("channel", [None])[0]
             blocked_only = query.get("blocked_only", ["false"])[0].lower() in ("true", "1")
+            bbox_param = query.get("bbox", [None])[0]
+
+            bbox = None
+            if bbox_param:
+                try:
+                    parts = [float(x.strip()) for x in bbox_param.split(",")]
+                    if len(parts) == 4:
+                        bbox = parts # [min_lat, min_lon, max_lat, max_lon]
+                except Exception:
+                    bbox = None
 
             try:
-                limit = min(2000, max(1, int(query.get("limit", [500])[0])))
+                limit = min(10000, max(1, int(query.get("limit", [5000])[0])))
             except (ValueError, TypeError):
-                limit = 500
+                limit = 5000
 
             filtered = []
             for r in combined:
@@ -720,15 +730,29 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                     elif rf in ("ALLOW", "LOW", "NOMINAL") and (is_blocked or risk_val >= 40):
                         continue
 
+                r_lat = r.get("lat") if r.get("lat") is not None else r.get("latitude")
+                r_lon = r.get("lon") if r.get("lon") is not None else r.get("longitude")
+                if bbox and r_lat is not None and r_lon is not None:
+                    min_lat, min_lon, max_lat, max_lon = bbox
+                    if not (min_lat <= float(r_lat) <= max_lat and min_lon <= float(r_lon) <= max_lon):
+                        continue
+
                 filtered.append(r)
                 if len(filtered) >= limit:
                     break
 
-            map_items = [enrich_map_transaction(r, combined) for r in filtered]
+            all_enriched = [enrich_map_transaction(r, combined) for r in filtered]
+            with_coords = [e for e in all_enriched if e.get("has_coordinates")]
+            without_coords = [e for e in all_enriched if not e.get("has_coordinates")]
+
             self._send_json(200, {
-                "total_matched": len(map_items),
+                "total_store_events": len(combined),
+                "total_matched": len(filtered),
+                "shown_count": len(with_coords),
+                "hidden_count": len(without_coords),
                 "limit": limit,
-                "items": map_items
+                "items": all_enriched,
+                "hidden_items": without_coords
             })
             return
 
@@ -784,11 +808,15 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
 
         # 6D. REST API: /api/map/config
         if path == "/api/map/config":
+            from src.config_manager import load_rules_config
+            cfg = load_rules_config()
+            thresholds = cfg.get("thresholds", {"review_score": 40, "block_score": 80})
             self._send_json(200, {
                 "tile_url": os.environ.get("MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
                 "tile_attribution": os.environ.get("MAP_TILE_ATTRIBUTION", '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'),
                 "api_key": os.environ.get("MAP_API_KEY", ""),
-                "environment": os.environ.get("ENVIRONMENT", "Demo")
+                "environment": os.environ.get("ENVIRONMENT", "Demo"),
+                "thresholds": thresholds
             })
             return
 
@@ -874,35 +902,13 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
 
         # 8. REST API: /api/stats
         if path == "/api/stats":
+            from src.metrics_calculator import compute_system_metrics
             combined, main_r, quar_r = get_combined_records(self.get_db())
-            total_events = len(combined)
-            flagged = sum(1 for r in combined if r.get("decision") in ("BLOCK", "REVIEW_QUEUE") or r.get("status") in ("QUARANTINED", "PENDING_REVIEW"))
-            blocked = sum(1 for r in combined if r.get("decision") == "BLOCK" or r.get("status") == "QUARANTINED")
-            block_rate_pct = round((blocked / max(1, total_events)) * 100.0, 1) if total_events > 0 else 0.0
-
-            qm = QuarantineManager(db_client=self.get_db())
-            sla_feed = qm.get_quarantine_feed_with_sla()
-            open_quarantine = [q for q in sla_feed if q.get("status") == "QUARANTINED"]
-            sla_breaches_count = sum(1 for q in open_quarantine if q.get("is_sla_breached") is True)
+            sys_metrics = compute_system_metrics(combined, quar_r)
 
             sim = self.get_simulator()
             is_active = bool(sim.is_running)
             current_tps = calculate_live_tps(combined, is_stream_active=is_active, configured_tps=sim.tps)
-
-            resolved_items = [q for q in sla_feed if q.get("status") in ("RELEASED", "CONFIRMED_FRAUD")]
-            durations = []
-            for r in resolved_items:
-                q_ts = r.get("quarantine_ts")
-                up_ts = r.get("updated_ts") or r.get("action_ts")
-                if q_ts and up_ts:
-                    try:
-                        q_d = datetime.fromisoformat(str(q_ts).replace("Z", "+00:00"))
-                        u_d = datetime.fromisoformat(str(up_ts).replace("Z", "+00:00"))
-                        diff_m = max(0.5, (u_d - q_d).total_seconds() / 60.0)
-                        durations.append(diff_m)
-                    except Exception:
-                        pass
-            mttr_mins = round(sum(durations) / len(durations), 1) if durations else 14.2
 
             now_dt = datetime.now(timezone.utc)
             sparkline_30m = [0] * 6
@@ -920,20 +926,24 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                         pass
 
             self._send_json(200, {
-                "total_processed": total_events,
-                "total_events": total_events,
-                "flagged_count": flagged,
-                "blocked_count": blocked,
-                "block_rate_pct": block_rate_pct,
-                "quarantine_active": len(open_quarantine),
-                "quarantine_backlog": len(open_quarantine),
-                "sla_breaches": sla_breaches_count,
+                "total_processed": sys_metrics["total_processed"],
+                "total_events": sys_metrics["total_events"],
+                "flagged_count": sys_metrics["flagged_count"],
+                "blocked_count": sys_metrics["blocked_count"],
+                "block_rate_pct": sys_metrics["block_rate_pct"],
+                "quarantine_active": sys_metrics["quarantine_active"],
+                "quarantine_backlog": sys_metrics["quarantine_backlog"],
+                "sla_breaches": sys_metrics["sla_breaches"],
+                "mttr_minutes": sys_metrics["mttr_minutes"],
+                "release_rate_pct": sys_metrics["release_rate_pct"],
+                "confirmed_fraud_rate_pct": sys_metrics["confirmed_fraud_rate_pct"],
+                "false_positive_rate_pct": sys_metrics["false_positive_rate_pct"],
                 "stream_active": is_active,
                 "stream_state": "LIVE" if is_active else "OFF",
                 "tps": current_tps,
-                "mttr_minutes": mttr_mins,
                 "sparkline_30m": sparkline_30m,
                 "delta_vs_previous_hour_pct": 3.8,
+                "environment": os.environ.get("ENVIRONMENT", "Demo"),
                 "uptime_seconds": int(time.time() - START_TIME)
             })
             return

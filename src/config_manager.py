@@ -110,6 +110,8 @@ def load_current_config() -> Dict[str, Any]:
             pass
     return copy.deepcopy(DEFAULT_CONFIG)
 
+load_rules_config = load_current_config
+
 
 def validate_config(candidate: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
     """Enforces strict safety & range bounds."""

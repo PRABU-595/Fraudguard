@@ -37,7 +37,7 @@ export const App: React.FC = () => {
     try {
       const [statsRes, mapRes] = await Promise.all([
         fetch("/api/stats"),
-        fetch("/api/map/transactions?limit=400"),
+        fetch("/api/map/transactions?limit=5000"),
       ]);
 
       if (statsRes.ok) {
@@ -255,7 +255,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-slate-100 flex flex-col font-sans">
+    <div className={`bg-background text-slate-100 flex flex-col font-sans ${activeTab === "map" ? "h-screen overflow-hidden" : "min-h-screen"}`}>
       {/* Toast Feedback */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-lg bg-surface-card border border-cyan-500/50 shadow-2xl text-xs font-medium text-cyan-200 flex items-center space-x-2 animate-fade-in">
@@ -288,12 +288,13 @@ export const App: React.FC = () => {
       />
 
       {/* Main View Container */}
-      <main className="flex-1 p-6 flex flex-col max-w-[1920px] w-full mx-auto overflow-hidden">
+      <main className={`flex-1 flex flex-col max-w-[1920px] w-full mx-auto overflow-hidden ${activeTab === "map" ? "p-3 pb-3 h-[calc(100vh-4rem)] min-h-0" : "p-6"}`}>
         {/* Render Global KPI Bar ONLY on Live Ingestion and Threat Map */}
         {(activeTab === "ingestion" || activeTab === "map") && (
           <KPIBar
             stats={stats}
             activeFilter={activeFilter}
+            isMapTab={activeTab === "map"}
             onFilterClick={(key, val) => {
               if (activeFilter?.val === val) {
                 setActiveFilter(null);

@@ -114,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: "config", label: "Governance", icon: Sliders, color: "text-slate-400" },
   ] as const;
 
-  const isCompactNav = windowWidth < 1400 && windowWidth >= 1100;
+  const isCompactNav = windowWidth < 1600 && windowWidth >= 1100;
   const isHamburger = windowWidth < 1100;
 
   return (
@@ -201,11 +201,11 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Global Search: Fixed 320px, expands on focus, single row, never wraps */}
-      <div className="mx-4 shrink-0">
+      {/* Global Search: shrinks to fit (max 320px), expands on focus, single row, never wraps */}
+      <div className="mx-2 sm:mx-4 shrink max-w-[320px] w-full min-w-[140px]">
         <div 
-          className={`transition-all duration-200 shrink-0 ${
-            searchFocused ? "w-[400px]" : "w-[320px]"
+          className={`transition-all duration-200 w-full ${
+            searchFocused ? "max-w-[400px]" : "max-w-[320px]"
           }`}
         >
           <button
@@ -227,8 +227,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Status, Simulator, Bell & User Controls (Strictly single line, non-wrapping) */}
-      <div className="flex items-center space-x-3 shrink-0">
+      {/* Status, Simulator, Bell & User Controls (Pinned at right edge, strictly single line) */}
+      <div className="flex items-center space-x-3 shrink-0 ml-auto">
         {/* Stream Badge: One compact pill (dot + Live / Paused / Offline) */}
         <div 
           className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full border text-[11px] font-medium shrink-0 whitespace-nowrap ${

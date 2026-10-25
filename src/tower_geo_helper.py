@@ -170,29 +170,44 @@ def enrich_map_transaction(record: Dict[str, Any], all_records: Optional[List[Di
     dest_account = record.get("destination_account") or "acc_merchant_direct"
 
     # Coordinates resolution
-    lat = record.get("lat") or record.get("latitude")
-    lon = record.get("lon") or record.get("longitude")
-    city = record.get("transaction_city") or (record.get("origin") or {}).get("city") or "New York"
-    country = record.get("transaction_country") or (record.get("origin") or {}).get("country") or "US"
+    from src.location_checker import CITY_COORDINATES
+    raw_lat = record.get("lat") if record.get("lat") is not None else record.get("latitude")
+    raw_lon = record.get("lon") if record.get("lon") is not None else record.get("longitude")
+    city = record.get("transaction_city") or (record.get("origin") or {}).get("city")
+    country = record.get("transaction_country") or (record.get("origin") or {}).get("country")
+    timestamp_str = str(record.get("timestamp") or record.get("quarantine_ts") or datetime.now(timezone.utc).isoformat())
 
-    if lat is None or lon is None:
-        city_lower = str(city).strip().lower()
-        coords = CITY_COORDINATES.get(city_lower)
-        if not coords:
-            # Fallback
-            coords = CITY_COORDINATES.get("new york", {"lat": 40.7128, "lon": -74.0060, "country": "US"})
-        
-        # Add deterministic sub-kilometer jitter per transaction ID so markers don't stack exactly on top of each other
+    has_coords = False
+    if raw_lat is not None and raw_lon is not None and not (float(raw_lat) == 0.0 and float(raw_lon) == 0.0 and not city):
+        lat = round(float(raw_lat), 6)
+        lon = round(float(raw_lon), 6)
+        city = city or "New York"
+        country = country or "US"
+        has_coords = True
+    elif city and str(city).strip().lower() in CITY_COORDINATES:
+        coords = CITY_COORDINATES[str(city).strip().lower()]
         h = int(hashlib.md5(txn_id.encode("utf-8")).hexdigest()[:6], 16)
         j_lat = ((h % 200) - 100) * 0.0003
         j_lon = (((h >> 8) % 200) - 100) * 0.0003
         lat = round(coords["lat"] + j_lat, 6)
         lon = round(coords["lon"] + j_lon, 6)
-        if not country or country == "US":
-            country = coords.get("country", "US")
+        country = country or coords.get("country", "US")
+        has_coords = True
+    else:
+        lat = None
+        lon = None
+        city = city or "Unknown"
+        country = country or "N/A"
+        has_coords = False
 
-    lat = round(float(lat), 6)
-    lon = round(float(lon), 6)
+    if has_coords:
+        source_fix = record.get("fix_source") or ("CELL_TOWER" if ("sim" in txn_id or "travel" in txn_id) else "GPS")
+        accuracy_m = float(record.get("accuracy_meters") or 18.5)
+        tower = generate_cell_tower(txn_id, lat, lon, country, timestamp_str)
+    else:
+        source_fix = "NO_COORDINATES"
+        accuracy_m = 0.0
+        tower = None
 
     # Decision and Risk
     decision = str(record.get("decision") or record.get("action") or "ALLOW").upper()
@@ -211,14 +226,6 @@ def enrich_map_transaction(record: Dict[str, Any], all_records: Optional[List[Di
     else:
         risk_tier = "NOMINAL"
         risk_color = "#10b981"  # Green
-
-    source_fix = record.get("fix_source") or ("CELL_TOWER" if ("sim" in txn_id or "travel" in txn_id) else "GPS")
-    accuracy_m = float(record.get("accuracy_meters") or 18.5)
-
-    timestamp_str = str(record.get("timestamp") or record.get("quarantine_ts") or datetime.now(timezone.utc).isoformat())
-
-    # Build tower
-    tower = generate_cell_tower(txn_id, lat, lon, country, timestamp_str)
 
     # Flags and reasons
     raw_flags = record.get("flags") or record.get("rule_violations") or []
@@ -303,6 +310,8 @@ def enrich_map_transaction(record: Dict[str, Any], all_records: Optional[List[Di
         "merchant_category": merchant_category,
         "channel": channel,
         "tower": tower,
+        "cell_tower": tower,
+        "has_coordinates": has_coords,
         "flags": flags_enriched,
         "network": network_info,
         "device": device_info,
