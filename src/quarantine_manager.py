@@ -1,3 +1,20 @@
+
+def format_sla_countdown(remaining_seconds: float) -> str:
+    """Format SLA countdown without decimal minutes, e.g. '42m left' or 'overdue 11h 29m'."""
+    if remaining_seconds < 0:
+        overdue_sec = abs(remaining_seconds)
+        hours = int(overdue_sec // 3600)
+        minutes = int((overdue_sec % 3600) // 60)
+        if hours > 0:
+            return f"overdue {hours}h {minutes}m"
+        return f"overdue {max(1, minutes)}m"
+    else:
+        hours = int(remaining_seconds // 3600)
+        minutes = int((remaining_seconds % 3600) // 60)
+        if hours > 0:
+            return f"{hours}h {minutes}m left"
+        return f"{max(1, minutes)}m left"
+
 """
 Feature 5: Anomaly Block & Quarantine System
 Manages quarantine table persistence (`fraud-quarantine`), authenticated actions
@@ -291,7 +308,28 @@ class QuarantineManager:
         auth_token: Optional[str] = None,
         headers: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """Executes the same action across a batch of transaction IDs."""
+        """Executes action across batch with admin role verification for risk >= 80 release."""
+        is_auth, auth_user, role = self.verify_auth(auth_token, headers)
+        if not is_auth:
+            return {
+                "http_status": 401,
+                "error": "UNAUTHORIZED",
+                "message": "Valid authentication credentials required for bulk action."
+            }
+
+        act_upper = str(action).strip().upper()
+
+        # Step 3 requirement: Block bulk release of items with risk >= 80 unless role = admin
+        if act_upper == "RELEASE" and role != "admin":
+            for tid in transaction_ids:
+                tx = self.db_client.get_transaction_by_id(tid)
+                if tx and float(tx.get("risk_score") or tx.get("score") or 0.0) >= 80.0:
+                    return {
+                        "http_status": 403,
+                        "error": "FORBIDDEN",
+                        "message": f"Bulk release of transaction '{tid}' with risk >= 80 requires admin privileges."
+                    }
+
         results = []
         for tid in transaction_ids:
             res = self.execute_action(
@@ -315,26 +353,69 @@ class QuarantineManager:
         items = self.db_client.get_all_quarantined_transactions()
         now_dt = datetime.now(timezone.utc)
         enriched: List[Dict[str, Any]] = []
+        total_sla_sec = float(self.sla_minutes * 60)
 
         for item in items:
             q_copy = dict(item)
             q_ts_str = item.get("quarantine_ts") or item.get("timestamp")
+            item_status = str(item.get("status", "QUARANTINED")).upper()
+
             if q_ts_str:
                 q_dt = parse_iso_timestamp(q_ts_str)
                 sla_due = q_dt + timedelta(minutes=self.sla_minutes)
                 remaining_sec = (sla_due - now_dt).total_seconds()
-                remaining_mins = round(remaining_sec / 60.0, 1)
-                is_breached = remaining_sec < 0 and item.get("status") == "QUARANTINED"
+                is_breached = (remaining_sec < 0) and (item_status in ("QUARANTINED", "AT_RISK", "ESCALATED"))
+
+                if item_status in ("RELEASED", "CONFIRMED_FRAUD"):
+                    sla_status = "RESOLVED"
+                    countdown_str = "Resolved"
+                elif remaining_sec <= 0:
+                    sla_status = "BREACHED"
+                    countdown_str = format_sla_countdown(remaining_sec)
+                elif remaining_sec < (0.25 * total_sla_sec):
+                    sla_status = "AT_RISK"
+                    countdown_str = format_sla_countdown(remaining_sec)
+                else:
+                    sla_status = "ON_TRACK"
+                    countdown_str = format_sla_countdown(remaining_sec)
 
                 q_copy["sla_due_at"] = sla_due.strftime("%Y-%m-%dT%H:%M:%SZ")
-                q_copy["sla_remaining_minutes"] = remaining_mins
+                q_copy["sla_deadline"] = sla_due.strftime("%Y-%m-%dT%H:%M:%SZ")
+                q_copy["sla_remaining_seconds"] = remaining_sec
+                q_copy["sla_countdown"] = countdown_str
+                q_copy["sla_status"] = sla_status
                 q_copy["is_sla_breached"] = is_breached
             else:
-                q_copy["sla_remaining_minutes"] = 0
+                q_copy["sla_countdown"] = "No SLA"
+                q_copy["sla_status"] = "ON_TRACK"
                 q_copy["is_sla_breached"] = False
 
             enriched.append(q_copy)
 
+        # Default sort: SLA urgency (breached first, then nearest deadline), then risk score
+        def _sla_sort_key(x: Dict[str, Any]) -> Tuple[int, float, float]:
+            st = x.get("status", "QUARANTINED")
+            is_open = st in ("QUARANTINED", "AT_RISK", "ESCALATED")
+            is_br = x.get("is_sla_breached", False)
+            rem_sec = x.get("sla_remaining_seconds", 999999)
+            risk = float(x.get("risk_score") or x.get("score") or 0.0)
+
+            if is_open and is_br:
+                # Breached open items first (most overdue first: rem_sec is negative)
+                priority_group = 0
+                deadline_key = rem_sec  # most negative first
+            elif is_open:
+                # Open non-breached items by nearest deadline
+                priority_group = 1
+                deadline_key = rem_sec
+            else:
+                # Resolved items last
+                priority_group = 2
+                deadline_key = 0
+
+            return (priority_group, deadline_key, -risk)
+
+        enriched.sort(key=_sla_sort_key)
         return enriched
 
     def emit_quarantine_count_metric(self) -> Dict[str, Any]:
