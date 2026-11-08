@@ -40,8 +40,16 @@ class SSEManager:
             if q in self.clients:
                 self.clients.remove(q)
 
-    def broadcast(self, event_type: str, data: Any) -> None:
-        payload = f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+    def broadcast(self, event_type_or_data: Any, data: Optional[Any] = None) -> None:
+        if data is None:
+            if isinstance(event_type_or_data, dict) and "type" in event_type_or_data:
+                ev_type = str(event_type_or_data["type"]).lower()
+            else:
+                ev_type = "message"
+            payload = f"event: {ev_type}\ndata: {json.dumps(event_type_or_data)}\n\n"
+        else:
+            payload = f"event: {event_type_or_data}\ndata: {json.dumps(data)}\n\n"
+
         dead_clients = []
         with self._clients_lock:
             for q in self.clients:
@@ -52,6 +60,9 @@ class SSEManager:
             for dead in dead_clients:
                 if dead in self.clients:
                     self.clients.remove(dead)
+
+    def broadcast_named(self, event_type: str, data: Any) -> None:
+        self.broadcast(event_type, data)
 
     def _heartbeat_loop(self) -> None:
         while self._running:

@@ -8,7 +8,6 @@ interface CommandPaletteProps {
   transactions: Transaction[];
   onSelectTransaction: (tx: Transaction) => void;
   setActiveTab: (tab: "ingestion" | "map" | "quarantine") => void;
-  onTriggerScenario: (scenario: string) => Promise<void>;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
@@ -17,7 +16,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   transactions,
   onSelectTransaction,
   setActiveTab,
-  onTriggerScenario,
 }) => {
   const [query, setQuery] = useState("");
 
@@ -95,36 +93,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             <span>Switch to Threat Map</span>
           </button>
 
-          {/* Adversary Scenario Injections */}
-          <div className="px-2 py-1 text-[10px] font-semibold text-muted-dark uppercase tracking-wider pt-2">
-            Simulate Attack Scenarios
-          </div>
-          <button
-            onClick={() => {
-              onTriggerScenario("IMPOSSIBLE_TRAVEL");
-              onClose();
-            }}
-            className="w-full px-2.5 py-1.5 rounded hover:bg-surface-hover flex items-center justify-between text-slate-200"
-          >
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
-              <span>Fire Impossible Travel Attack</span>
-            </div>
-            <span className="text-[10px] text-red-400 font-mono">BLOCK</span>
-          </button>
-          <button
-            onClick={() => {
-              onTriggerScenario("TOR");
-              onClose();
-            }}
-            className="w-full px-2.5 py-1.5 rounded hover:bg-surface-hover flex items-center justify-between text-slate-200"
-          >
-            <div className="flex items-center space-x-2">
-              <Zap className="h-3.5 w-3.5 text-purple-400" />
-              <span>Fire Tor Exit Node Relay Attack</span>
-            </div>
-            <span className="text-[10px] text-red-400 font-mono">BLOCK</span>
-          </button>
+
 
           {/* Matched Transactions */}
           {filteredTxs.length > 0 && (

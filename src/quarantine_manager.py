@@ -166,6 +166,9 @@ class QuarantineManager:
             for k, v in headers.items():
                 norm_headers[str(k).lower()] = v
 
+        if self.api_key and not provided_key and not norm_headers:
+            return False, analyst_id, role
+
         if not provided_key and norm_headers:
             auth_h = norm_headers.get("authorization", "")
             if auth_h.lower().startswith("bearer "):

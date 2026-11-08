@@ -126,14 +126,14 @@ export const App: React.FC = () => {
             distance_km: 0.24,
             accuracy_meters: 35.0,
             timestamp_fix: rawTx.timestamp || new Date().toISOString(),
-            badge: "SIMULATED",
+            badge: rawTx.badge || "LIVE",
           },
           flags: (rawTx.flags || []).map((f: string) => ({
             flag: f,
             label: f.replace(/_/g, " "),
             reason: `Risk heuristic violation: ${f}`,
           })),
-          badge: "SIMULATED",
+          badge: rawTx.badge || "LIVE",
         };
 
         setLatestTxId(txId);
@@ -428,7 +428,6 @@ export const App: React.FC = () => {
         transactions={transactions}
         onSelectTransaction={handleSelectTransaction}
         setActiveTab={setActiveTab}
-        onTriggerScenario={handleTriggerScenario}
       />
 
       {/* Application Header */}
@@ -437,8 +436,6 @@ export const App: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-        onTriggerScenario={handleTriggerScenario}
-        onToggleSimulator={handleToggleSimulator}
         userRole={userRole}
         setUserRole={setUserRole}
         environment={stats?.environment || "Demo"}

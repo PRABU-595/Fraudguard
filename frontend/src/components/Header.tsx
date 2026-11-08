@@ -28,8 +28,6 @@ interface HeaderProps {
   activeTab: "ingestion" | "map" | "quarantine" | "accounts" | "analytics" | "config";
   setActiveTab: (tab: "ingestion" | "map" | "quarantine" | "accounts" | "analytics" | "config") => void;
   onOpenCommandPalette: () => void;
-  onTriggerScenario: (scenario: string) => Promise<void>;
-  onToggleSimulator: (running: boolean, tps: number) => Promise<void>;
   userRole?: string;
   setUserRole?: (role: string) => void;
   environment?: string;
@@ -40,13 +38,10 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   onOpenCommandPalette,
-  onTriggerScenario,
-  onToggleSimulator,
   userRole = "analyst",
   setUserRole,
   environment = "Demo",
 }) => {
-  const [showSimulatorModal, setShowSimulatorModal] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(3);
@@ -98,12 +93,10 @@ export const Header: React.FC<HeaderProps> = ({
   ]);
   const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  const [simTps, setSimTps] = useState(stats?.tps || 2.0);
-  const [simLoading, setSimLoading] = useState(false);
+
   const [windowWidth, setWindowWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 1440);
 
   const userDropdownRef = useRef<HTMLDivElement>(null);
-  const simModalRef = useRef<HTMLDivElement>(null);
   const hamburgerRef = useRef<HTMLDivElement>(null);
   const notifDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -123,9 +116,6 @@ export const Header: React.FC<HeaderProps> = ({
       if (notifDropdownRef.current && !notifDropdownRef.current.contains(e.target as Node)) {
         setShowNotifications(false);
       }
-      if (simModalRef.current && !simModalRef.current.contains(e.target as Node)) {
-        setShowSimulatorModal(false);
-      }
       if (hamburgerRef.current && !hamburgerRef.current.contains(e.target as Node)) {
         setShowHamburgerMenu(false);
       }
@@ -139,23 +129,7 @@ export const Header: React.FC<HeaderProps> = ({
   const isLive = isStreamActive && streamState === "LIVE";
   const isPaused = isStreamActive && streamState === "PAUSED";
 
-  const handleSimToggle = async () => {
-    setSimLoading(true);
-    try {
-      await onToggleSimulator(!isStreamActive, simTps);
-    } finally {
-      setSimLoading(false);
-    }
-  };
 
-  const handleScenarioClick = async (scenario: string) => {
-    setSimLoading(true);
-    try {
-      await onTriggerScenario(scenario);
-    } finally {
-      setSimLoading(false);
-    }
-  };
 
   const navItems = [
     { id: "ingestion", label: "Live Ingestion", icon: Activity, color: "text-cyan-400" },
@@ -310,133 +284,15 @@ export const Header: React.FC<HeaderProps> = ({
           {environment}
         </span>
 
-        {/* Attack Simulator Popover Trigger */}
-        <div className="relative shrink-0" ref={simModalRef}>
-          <button
-            onClick={() => setShowSimulatorModal(!showSimulatorModal)}
-            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md bg-surface-elevated hover:bg-surface-hover border border-border text-xs text-slate-200 transition shrink-0 whitespace-nowrap"
-          >
-            <Sliders className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
-            <span className="hidden xl:inline">Simulator</span>
-          </button>
-
-          {showSimulatorModal && (
-            <div className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-surface-elevated border border-border shadow-2xl p-4 z-50 text-xs">
-              <div className="flex items-center justify-between pb-3 border-b border-border/80">
-                <div className="flex items-center space-x-2">
-                  <Zap className="h-4 w-4 text-cyan-400" />
-                  <span className="font-semibold text-white">Adversary Simulator</span>
-                </div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/50 font-mono">
-                  OPERATIONAL
-                </span>
-              </div>
-
-              {/* Streaming TPS Control */}
-              <div className="py-3 border-b border-border/80 space-y-2">
-                <div className="flex items-center justify-between text-muted">
-                  <span>Stream Generator</span>
-                  <span className="font-mono text-white">{simTps} TPS</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="8.0"
-                  step="0.5"
-                  value={simTps}
-                  onChange={(e) => setSimTps(parseFloat(e.target.value))}
-                  className="w-full accent-cyan-400 h-1.5 bg-surface rounded cursor-pointer"
-                />
-                <button
-                  onClick={handleSimToggle}
-                  disabled={simLoading}
-                  className={`w-full py-1.5 rounded font-medium flex items-center justify-center space-x-2 transition ${
-                    isStreamActive
-                      ? "bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30"
-                      : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30"
-                  }`}
-                >
-                  {isStreamActive ? (
-                    <>
-                      <Square className="h-3 w-3" />
-                      <span>Halt Stream Ingestion</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-3 w-3" />
-                      <span>Start Background Stream</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Attack Scenarios */}
-              <div className="pt-3 space-y-1.5">
-                <p className="text-[11px] font-medium text-muted uppercase tracking-wider mb-2">
-                  Inject Attack Scenarios
-                </p>
-                <button
-                  onClick={() => handleScenarioClick("NORMAL")}
-                  disabled={simLoading}
-                  className="w-full text-left px-2.5 py-1.5 rounded hover:bg-surface-hover flex items-center justify-between transition group"
-                >
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                    <span className="text-slate-200">Normal Domestic</span>
-                  </div>
-                  <span className="text-[10px] text-muted-dark group-hover:text-muted font-mono">ALLOW</span>
-                </button>
-
-                <button
-                  onClick={() => handleScenarioClick("IMPOSSIBLE_TRAVEL")}
-                  disabled={simLoading}
-                  className="w-full text-left px-2.5 py-1.5 rounded hover:bg-surface-hover flex items-center justify-between transition group"
-                >
-                  <div className="flex items-center space-x-2">
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
-                    <span className="text-slate-200">Impossible Travel</span>
-                  </div>
-                  <span className="text-[10px] text-red-400 font-mono">BLOCK (&gt;900km/h)</span>
-                </button>
-
-                <button
-                  onClick={() => handleScenarioClick("TOR")}
-                  disabled={simLoading}
-                  className="w-full text-left px-2.5 py-1.5 rounded hover:bg-surface-hover flex items-center justify-between transition group"
-                >
-                  <div className="flex items-center space-x-2">
-                    <Radio className="h-3.5 w-3.5 text-purple-400" />
-                    <span className="text-slate-200">Tor Exit Node</span>
-                  </div>
-                  <span className="text-[10px] text-red-400 font-mono">BLOCK</span>
-                </button>
-
-                <button
-                  onClick={() => handleScenarioClick("BURST")}
-                  disabled={simLoading}
-                  className="w-full text-left px-2.5 py-1.5 rounded hover:bg-surface-hover flex items-center justify-between transition group"
-                >
-                  <div className="flex items-center space-x-2">
-                    <Flame className="h-3.5 w-3.5 text-orange-400" />
-                    <span className="text-slate-200">Velocity Burst</span>
-                  </div>
-                  <span className="text-[10px] text-red-400 font-mono">BURST 5x</span>
-                </button>
-
-                <button
-                  onClick={() => handleScenarioClick("NIGHT")}
-                  disabled={simLoading}
-                  className="w-full text-left px-2.5 py-1.5 rounded hover:bg-surface-hover flex items-center justify-between transition group"
-                >
-                  <div className="flex items-center space-x-2">
-                    <Moon className="h-3.5 w-3.5 text-indigo-400" />
-                    <span className="text-slate-200">Night Fraud</span>
-                  </div>
-                  <span className="text-[10px] text-amber-400 font-mono">REVIEW</span>
-                </button>
-              </div>
-            </div>
-          )}
+        {/* Live Dataset Streaming Indicator */}
+        <div className="flex items-center space-x-2 px-2.5 py-1 rounded-md bg-emerald-950/40 border border-emerald-800/50 text-emerald-400 shrink-0 whitespace-nowrap">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span className="text-[11px] font-mono font-medium tracking-wide">
+            DATASET STREAM LIVE &bull; {stats?.tps ? stats.tps.toFixed(1) : "1.5"} TPS
+          </span>
         </div>
 
         {/* Notifications Bell with Interactive Alert Center Dropdown */}

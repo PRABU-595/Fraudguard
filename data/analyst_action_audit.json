@@ -2428,5 +2428,82 @@
     "reason": "Operator manual block test",
     "notes": "Testing block and quarantine reflection",
     "timestamp": "2026-10-25T15:37:17Z"
+  },
+  {
+    "transaction_id": "tx_test_bulk_high_risk",
+    "action": "RELEASE",
+    "previous_status": "QUARANTINED",
+    "new_status": "RELEASED",
+    "operator": "admin_user",
+    "role": "admin",
+    "reason": "Bulk review",
+    "notes": "Bulk review",
+    "timestamp": "2026-11-08T09:38:09Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Attempt without key",
+    "timestamp": "2026-11-08T09:38:39Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-11-08T09:38:39Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Attempt without key",
+    "timestamp": "2026-11-08T09:38:53Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-11-08T09:38:53Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-11-08T09:39:45Z"
+  },
+  {
+    "transaction_id": "tx_f5_block_1",
+    "action": "RELEASE",
+    "previous_status": "RELEASED",
+    "new_status": "RELEASED",
+    "operator": "analyst_1",
+    "role": "analyst",
+    "reason": "Review complete",
+    "notes": "Verified legitimate travel with cardholder",
+    "timestamp": "2026-11-08T09:39:55Z"
   }
 ]

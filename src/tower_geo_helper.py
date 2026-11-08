@@ -90,6 +90,16 @@ FLAG_EXPLANATIONS: Dict[str, str] = {
     "NEW_ACCOUNT": "Activity on newly provisioned account (< 7 days since KYC issuance).",
     "UNVERIFIED_CONTACT": "Cardholder lacks verified two-factor authentication recovery contact.",
     "CHANNEL_RISK": "High-risk unauthenticated transaction channel or headless agent signature.",
+    "ACCOUNT_TAKEOVER": "Sudden geographic displacement and credential alterations consistent with compromised account credentials.",
+    "MONEY_LAUNDERING": "Rapid structuring of cross-border transfers designed to evade statutory AML reporting thresholds.",
+    "CARD_NOT_PRESENT": "High-risk CNP transaction without 3D Secure cryptographic verification or verified CVV2 match.",
+    "SYNTHETIC_ID": "Discrepancy detected between social credit identifiers, device fingerprints, and applicant KYC history.",
+    "FRIENDLY_FRAUD": "Transaction initiated from cardholder's primary IP/device followed by historical pattern of bad-faith disputes.",
+    "INTERNATIONAL_ANOMALY": "Cross-border payment executed outside standard domestic spending corridors.",
+    "VELOCITY_SURGE": "Sudden frequency spike exceeding baseline hourly activity for this account profile.",
+    "HIGH_RISK_GEO": "Transaction originated from or routed through high-risk sanctions-monitored jurisdictions.",
+    "HIGH_RISK_MERCHANT": "Transaction routed to merchant category code associated with elevated chargeback ratios.",
+    "ALGORITHMIC_ANOMALY": "Neural network anomaly detector scored transaction above critical confidence threshold.",
 }
 
 
@@ -170,7 +180,6 @@ def enrich_map_transaction(record: Dict[str, Any], all_records: Optional[List[Di
     dest_account = record.get("destination_account") or "acc_merchant_direct"
 
     # Coordinates resolution
-    from src.location_checker import CITY_COORDINATES
     raw_lat = record.get("lat") if record.get("lat") is not None else record.get("latitude")
     raw_lon = record.get("lon") if record.get("lon") is not None else record.get("longitude")
     city = record.get("transaction_city") or (record.get("origin") or {}).get("city")

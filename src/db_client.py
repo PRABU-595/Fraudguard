@@ -34,10 +34,13 @@ except ImportError:
 
 DEFAULT_DYNAMODB_TABLE = "fraud-detection-transactions"
 DEFAULT_QUARANTINE_TABLE = "fraud-quarantine"
-DEFAULT_AWS_REGION = "eu-north-1"
+DEFAULT_AWS_REGION = "us-east-1"
 TTL_30_DAYS_SECONDS = 30 * 86400
 MAIN_TTL_DAYS = 90
 QUARANTINE_TTL_DAYS = 7
+DEFAULT_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+DEFAULT_MAIN_LOG = os.path.join(DEFAULT_DATA_DIR, "audit_log.json")
+DEFAULT_QUARANTINE_LOG = os.path.join(DEFAULT_DATA_DIR, "quarantine_log.json")
 
 
 def _to_dynamodb_safe(obj: Any) -> Any:
@@ -98,8 +101,8 @@ class DBClient:
 
     def __init__(
         self,
-        fallback_path: str = "data/audit_log.json",
-        quarantine_fallback_path: str = "data/quarantine_log.json",
+        fallback_path: str = DEFAULT_MAIN_LOG,
+        quarantine_fallback_path: str = DEFAULT_QUARANTINE_LOG,
         in_memory_only: bool = False
     ) -> None:
         self.dynamodb_table_name = os.environ.get("DYNAMODB_TABLE", DEFAULT_DYNAMODB_TABLE)

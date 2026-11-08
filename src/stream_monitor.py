@@ -154,6 +154,18 @@ def calculate_live_tps(records: List[Dict[str, Any]], is_stream_active: bool = F
 
 
 _CACHE_LOCK = threading.Lock()
+_BUFFER_LOCK = threading.Lock()
+_tx_buffer: List[Dict[str, Any]] = []
+
+
+def append_to_tx_buffer(tx: Dict[str, Any]) -> None:
+    with _BUFFER_LOCK:
+        _tx_buffer.insert(0, tx)
+        if len(_tx_buffer) > 200:
+            del _tx_buffer[200:]
+    invalidate_records_cache()
+
+
 _COMBINED_CACHE: Dict[str, Any] = {
     "timestamp": 0.0,
     "combined": None,
@@ -178,9 +190,14 @@ def get_combined_records(db_client: Optional[DBClient] = None, force_refresh: bo
     quarantine_records = db.get_all_quarantined_transactions()
 
     deduped = {}
+    with _BUFFER_LOCK:
+        for b in _tx_buffer:
+            tid = b.get("transaction_id")
+            if tid:
+                deduped[tid] = b
     for r in main_records:
         tid = r.get("transaction_id")
-        if tid:
+        if tid and tid not in deduped:
             deduped[tid] = r
     for q in quarantine_records:
         tid = q.get("transaction_id")
@@ -980,9 +997,15 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
             combined, main_r, quar_r = get_combined_records(self.get_db())
             sys_metrics = compute_system_metrics(combined, quar_r)
 
-            sim = self.get_simulator()
-            is_active = bool(sim.is_running)
-            current_tps = calculate_live_tps(combined, is_stream_active=is_active, configured_tps=sim.tps)
+            try:
+                from src.dataset_streamer import DatasetStreamWorker
+                worker = DatasetStreamWorker.get_instance(self.get_db())
+                is_active = bool(worker.is_running and worker.is_alive())
+                current_tps = worker.tps if is_active else 1.5
+            except Exception:
+                sim = self.get_simulator()
+                is_active = bool(sim.is_running)
+                current_tps = calculate_live_tps(combined, is_stream_active=is_active, configured_tps=sim.tps)
 
             now_dt = datetime.now(timezone.utc)
             sparkline_30m = [0] * 6
@@ -1532,10 +1555,15 @@ class ThreadedConsoleServer(ThreadingHTTPServer):
 
 def run_server(port: int = 8081) -> None:
     try:
-        from src.map_seeder import seed_historical_map_data
-        seed_historical_map_data(DBClient(), force=False)
+        from src.dataset_streamer import seed_canonical_dataset, DatasetStreamWorker
+        db = DBClient(fallback_path=MAIN_LOG_FILE, quarantine_fallback_path=QUARANTINE_LOG_FILE)
+        seed_canonical_dataset(db, sample_size=3500, force=False)
+        worker = DatasetStreamWorker.get_instance(db_client=db, tps=1.5)
+        if not worker.is_alive():
+            worker.start()
+            print("[DatasetStreamer] Continuous dataset streaming thread started.")
     except Exception as e:
-        pass
+        print(f"[DatasetStreamer] Initialization notice: {e}")
     httpd = None
     if socket.has_ipv6:
         try:

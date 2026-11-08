@@ -322,7 +322,7 @@ export const LiveIngestionTable: React.FC<LiveIngestionTableProps> = ({
                 <td colSpan={10} className="py-16 text-center text-muted">
                   <Shield className="h-8 w-8 mx-auto mb-2 text-slate-600" />
                   <p className="font-medium text-slate-300">No transactions match current view.</p>
-                  <p className="text-[11px] text-muted-dark mt-1">Try clearing filters or triggering simulator events.</p>
+                  <p className="text-[11px] text-muted-dark mt-1">Try clearing filters or awaiting live dataset stream events.</p>
                 </td>
               </tr>
             ) : (
