@@ -124,10 +124,7 @@ export const Header: React.FC<HeaderProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const streamState = stats?.stream_state || "OFF";
-  const isStreamActive = stats?.stream_active || false;
-  const isLive = isStreamActive && streamState === "LIVE";
-  const isPaused = isStreamActive && streamState === "PAUSED";
+
 
 
 
@@ -255,45 +252,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Status, Simulator, Bell & User Controls (Pinned at right edge, strictly single line) */}
       <div className="flex items-center space-x-3 shrink-0 ml-auto">
-        {/* Stream Badge: One compact pill (dot + Live / Paused / Offline) */}
-        <div 
-          className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full border text-[11px] font-medium shrink-0 whitespace-nowrap ${
-            isLive
-              ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
-              : isPaused
-              ? "bg-amber-950/40 border-amber-500/40 text-amber-300"
-              : "bg-slate-900 border-slate-700 text-slate-400"
-          }`}
-          title={isLive ? `Stream Active (${stats?.tps.toFixed(1)} TPS)` : isPaused ? "Stream Paused" : "Stream Offline"}
-        >
-          <span className="relative flex h-2 w-2 shrink-0">
-            {isLive && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            )}
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${
-              isLive ? "bg-emerald-400" : isPaused ? "bg-amber-400" : "bg-slate-500"
-            }`}></span>
-          </span>
-          <span className="font-mono text-[11px] tracking-wide">
-            {isLive ? "Live" : isPaused ? "Paused" : "Offline"}
-          </span>
-        </div>
 
-        {/* Environment Pill: Replaces PCI-DSS L1, reads from config ("Demo") */}
-        <span className="text-[10px] font-mono font-semibold uppercase px-2 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-800/50 shrink-0 whitespace-nowrap">
-          {environment}
-        </span>
-
-        {/* Live Dataset Streaming Indicator */}
-        <div className="flex items-center space-x-2 px-2.5 py-1 rounded-md bg-emerald-950/40 border border-emerald-800/50 text-emerald-400 shrink-0 whitespace-nowrap">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          <span className="text-[11px] font-mono font-medium tracking-wide">
-            DATASET STREAM LIVE &bull; {stats?.tps ? stats.tps.toFixed(1) : "1.5"} TPS
-          </span>
-        </div>
 
         {/* Notifications Bell with Interactive Alert Center Dropdown */}
         <div className="relative shrink-0" ref={notifDropdownRef}>
