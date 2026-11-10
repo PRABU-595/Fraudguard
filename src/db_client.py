@@ -176,33 +176,41 @@ class DBClient:
             except OSError:
                 return None
 
-    def _read_json_list(self, path: Optional[str], mem_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _read_json_list(self, path: Optional[str], mem_list: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+        safe_mem = list(mem_list) if mem_list is not None else []
         if self.in_memory_only or not path:
-            return list(mem_list)
+            return safe_mem
         resolved = self._ensure_file(path, os.path.basename(path))
         if not resolved:
-            return list(mem_list)
+            return safe_mem
         try:
             with open(resolved, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                return data if isinstance(data, list) else []
+                return data if isinstance(data, list) else safe_mem
         except Exception:
-            return list(mem_list)
+            return safe_mem
 
-    def _write_json_list(self, path: Optional[str], data: List[Dict[str, Any]], mem_list: List[Dict[str, Any]]) -> None:
-        if self.in_memory_only or not path:
+    def _write_json_list(self, path: Optional[str], data: List[Dict[str, Any]], mem_list: Optional[List[Dict[str, Any]]]) -> None:
+        if mem_list is not None:
             mem_list.clear()
             mem_list.extend(data)
+        if self.in_memory_only or not path:
             return
         resolved = self._ensure_file(path, os.path.basename(path))
         if not resolved:
-            mem_list.clear()
-            mem_list.extend(data)
             return
         try:
-            with open(resolved, "w", encoding="utf-8") as f:
+            dir_name = os.path.dirname(resolved)
+            tmp_path = os.path.join(dir_name, f".tmp_{os.path.basename(resolved)}_{threading.get_ident()}")
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
+            os.replace(tmp_path, resolved)
         except OSError:
+            try:
+                with open(resolved, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+            except OSError:
+                pass
             mem_list.clear()
             mem_list.extend(data)
 
