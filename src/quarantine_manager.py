@@ -228,7 +228,8 @@ class QuarantineManager:
             "RELEASE": "RELEASED",
             "CONFIRM_FRAUD": "CONFIRMED_FRAUD",
             "ESCALATE": "ESCALATED",
-            "ADD_NOTE": None
+            "ADD_NOTE": None,
+            "ASSIGN": None
         }
 
         if act_upper not in status_map:
@@ -240,15 +241,6 @@ class QuarantineManager:
 
         target_status = status_map[act_upper]
         now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        action_entry = {
-            "action": act_upper,
-            "analyst_id": analyst_id or auth_user,
-            "role": role,
-            "reason": reason,
-            "notes": effective_notes,
-            "timestamp": now_iso
-        }
 
         # Update in DB
         current_tx = self.db_client.get_transaction_by_id(transaction_id)
@@ -270,6 +262,20 @@ class QuarantineManager:
             current_tx = tx_data
 
         new_status = target_status if target_status else current_tx.get("status", "QUARANTINED")
+
+        # Handle ASSIGN action specifically
+        if act_upper == "ASSIGN":
+            new_assignee = analyst_id or auth_user or "Alex Chen (You)"
+            if hasattr(self.db_client, "_lock"):
+                with self.db_client._lock:
+                    q_logs = self.db_client._read_json_list(self.db_client.quarantine_fallback_path, self.db_client._mem_quarantine)
+                    for item in q_logs:
+                        if item.get("transaction_id") == transaction_id or item.get("id") == transaction_id:
+                            item["assignee"] = new_assignee
+                            item["updated_ts"] = now_iso
+                            break
+                    self.db_client._write_json_list(self.db_client.quarantine_fallback_path, q_logs, self.db_client._mem_quarantine)
+
         updated = self.db_client.update_quarantine_status(
             transaction_id=transaction_id,
             new_status=new_status,
@@ -440,8 +446,7 @@ class QuarantineManager:
             st = x.get("status", "QUARANTINED")
             is_open = st in ("QUARANTINED", "AT_RISK", "ESCALATED")
             is_br = x.get("is_sla_breached", False)
-            rem_sec = x.get("sla_remaining_seconds", 999999)
-            q_copy["sla_remaining_minutes"] = round(remaining_sec / 60.0, 1)
+            rem_sec = float(x.get("sla_remaining_seconds", 999999))
             risk = float(x.get("risk_score") or x.get("score") or 0.0)
 
             if is_open and is_br:

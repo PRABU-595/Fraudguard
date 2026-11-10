@@ -1388,19 +1388,25 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
             )
             invalidate_records_cache()
             act_up = str(body.get("action", "")).upper()
-            new_dec = "ALLOW" if act_up == "RELEASE" else "BLOCK"
+            if act_up == "RELEASE":
+                new_dec = "ALLOW"
+            elif act_up in ("CONFIRM_FRAUD", "BLOCK"):
+                new_dec = "BLOCK"
+            else:
+                new_dec = None  # keep unchanged for ADD_NOTE / ASSIGN / ESCALATE
             with _BUFFER_LOCK:
                 for b_tx in _tx_buffer:
                     if b_tx.get("transaction_id") == tx_id or b_tx.get("id") == tx_id:
-                        b_tx["decision"] = new_dec
-                        b_tx["status"] = res.get("status", "QUARANTINED")
+                        if new_dec is not None:
+                            b_tx["decision"] = new_dec
+                        b_tx["status"] = res.get("status", b_tx.get("status", "QUARANTINED"))
                         if new_dec == "BLOCK":
                             b_tx["risk_score"] = max(88.0, float(b_tx.get("risk_score") or 0))
             sse_mgr.broadcast({
                 "type": "STATUS_UPDATE",
                 "transaction_id": tx_id,
                 "status": res.get("status", "QUARANTINED"),
-                "decision": new_dec,
+                "decision": new_dec or "BLOCK",
             })
             self._send_json(res["http_status"], res)
             return
@@ -1481,6 +1487,24 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
                 reason=reason,
                 headers=dict(self.headers)
             )
+            invalidate_records_cache()
+            act_up = str(action).upper()
+            new_dec = "ALLOW" if act_up == "RELEASE" else "BLOCK"
+            new_st = "RELEASED" if act_up == "RELEASE" else ("CONFIRMED_FRAUD" if act_up == "CONFIRM_FRAUD" else "ESCALATED")
+            with _BUFFER_LOCK:
+                for b_tx in _tx_buffer:
+                    if b_tx.get("transaction_id") in ids or b_tx.get("id") in ids:
+                        b_tx["decision"] = new_dec
+                        b_tx["status"] = new_st
+                        if new_dec == "BLOCK":
+                            b_tx["risk_score"] = max(88.0, float(b_tx.get("risk_score") or 0))
+            for tid in ids:
+                sse_mgr.broadcast({
+                    "type": "STATUS_UPDATE",
+                    "transaction_id": tid,
+                    "status": new_st,
+                    "decision": new_dec,
+                })
             self._send_json(res["http_status"], res)
             return
 

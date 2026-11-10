@@ -32,6 +32,7 @@ if ROOT_DIR not in sys.path:
 
 from src.tower_geo_helper import enrich_map_transaction, generate_cell_tower, FLAG_EXPLANATIONS
 from src.sse_manager import SSEManager
+from src.cloudwatch_logger import CloudWatchLogger
 
 DATASET_CANDIDATE_PATHS = [
     os.path.join(DATA_DIR, "banking_transactions_50000.csv"),
@@ -440,6 +441,12 @@ class DatasetStreamWorker(threading.Thread):
 
                 # Broadcast live event via SSE
                 sse_mgr.broadcast_named("transaction", enriched)
+
+                # Emit to AWS CloudWatch Logs & Metrics
+                try:
+                    CloudWatchLogger.get_instance().log_transaction(enriched)
+                except Exception:
+                    pass
 
             except Exception as e:
                 time.sleep(1.0)

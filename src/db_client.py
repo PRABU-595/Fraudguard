@@ -402,12 +402,13 @@ class DBClient:
 
     def get_transaction_by_id(self, transaction_id: str) -> Optional[Dict[str, Any]]:
         """Fetch a transaction by ID across main table and quarantine table."""
+        tid_str = str(transaction_id).strip()
         if self.use_dynamodb:
-            resp = self.main_table.get_item(Key={"transaction_id": str(transaction_id)})
+            resp = self.main_table.get_item(Key={"transaction_id": tid_str})
             if "Item" in resp:
                 return _from_dynamodb_safe(resp["Item"])
             if self.quarantine_table is not None:
-                q_resp = self.quarantine_table.get_item(Key={"transaction_id": str(transaction_id)})
+                q_resp = self.quarantine_table.get_item(Key={"transaction_id": tid_str})
                 if "Item" in q_resp:
                     return _from_dynamodb_safe(q_resp["Item"])
             return None
@@ -415,11 +416,16 @@ class DBClient:
             with self._lock:
                 main_logs = self._read_json_list(self.fallback_path, self._mem_main)
                 for r in main_logs:
-                    if r.get("transaction_id") == transaction_id:
+                    if r.get("transaction_id") == tid_str or r.get("id") == tid_str:
                         return r
                 q_logs = self._read_json_list(self.quarantine_fallback_path, self._mem_quarantine)
                 for q in q_logs:
-                    if q.get("transaction_id") == transaction_id:
+                    if (
+                        q.get("transaction_id") == tid_str
+                        or q.get("id") == tid_str
+                        or q.get("quarantine_id") == tid_str
+                        or q.get("quarantine_id") == f"quar_{tid_str}"
+                    ):
                         return q
             return None
 
@@ -482,8 +488,14 @@ class DBClient:
             with self._lock:
                 q_logs = self._read_json_list(self.quarantine_fallback_path, self._mem_quarantine)
                 updated_item = None
+                tid_str = str(transaction_id).strip()
                 for item in q_logs:
-                    if item.get("transaction_id") == transaction_id:
+                    if (
+                        item.get("transaction_id") == tid_str
+                        or item.get("id") == tid_str
+                        or item.get("quarantine_id") == tid_str
+                        or item.get("quarantine_id") == f"quar_{tid_str}"
+                    ):
                         item["status"] = new_status
                         if new_status in ("QUARANTINED", "CONFIRMED_FRAUD"):
                             item["decision"] = "BLOCK"
@@ -552,3 +564,9 @@ class DBClient:
             if updated_item:
                 self._write_json_list(self.fallback_path, main_logs, self._mem_main)
             return updated_item
+
+    # Functional aliases for streaming worker & API compatibility
+    record_main_transaction = log_transaction
+    record_quarantine_transaction = log_quarantine
+    get_quarantine_records = get_all_quarantined_transactions
+    get_main_records = get_all_main_transactions

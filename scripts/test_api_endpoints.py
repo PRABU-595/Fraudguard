@@ -44,6 +44,7 @@ print(f"  Risk Histogram: {analytics['risk_histogram']}")
 # Test Map Transactions
 map_items = [enrich_map_transaction(r, combined) for r in combined[:10]]
 print(f"\nMap Transactions enriched: {len(map_items)}")
-print(f"  First Map item: {map_items[0]['city']}, {map_items[0]['country']} ({map_items[0]['lat']}, {map_items[0]['lon']}) Carrier: {map_items[0]['tower']['carrier']}")
+first_tower = (map_items[0].get('tower') or map_items[0].get('cell_tower') or {})
+print(f"  First Map item: {map_items[0]['city']}, {map_items[0]['country']} ({map_items[0]['lat']}, {map_items[0]['lon']}) Carrier: {first_tower.get('carrier', 'N/A')}")
 
 print("\nALL BACKEND API MODULE TESTS PASSED!")

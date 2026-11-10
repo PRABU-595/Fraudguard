@@ -38,7 +38,7 @@ export const App: React.FC = () => {
     try {
       const [statsRes, mapRes] = await Promise.all([
         fetch("/api/stats"),
-        fetch("/api/map/transactions?limit=100"),
+        fetch("/api/map/transactions?limit=1000"),
       ]);
 
       if (statsRes.ok) {
@@ -49,7 +49,7 @@ export const App: React.FC = () => {
       if (mapRes.ok) {
         const mapData = await mapRes.json();
         if (mapData.items) {
-          setTransactions((mapData.items || []).slice(0, 100));
+          setTransactions((mapData.items || []).slice(0, 2000));
         }
       }
     } catch (err) {
@@ -141,7 +141,7 @@ export const App: React.FC = () => {
 
         setTransactions((prev) => {
           const updated = [newTx, ...prev.filter((t) => t.transaction_id !== txId)];
-          return updated.slice(0, 100);
+          return updated.slice(0, 2000);
         });
 
         setStats((prev) => {
