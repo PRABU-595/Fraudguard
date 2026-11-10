@@ -1220,6 +1220,7 @@ class TelemetryHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path
+        sse_mgr = self.get_sse()
 
         length = _safe_int(self.headers.get("Content-Length", "0"), 0, min_val=0)
         raw = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
